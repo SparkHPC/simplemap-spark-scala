@@ -5,13 +5,15 @@ import java.nio.file.Paths
 import org.apache.spark.SparkContext
 import java.io._
 
+import org.apache.spark.rdd.RDD
+
 import scala.util.Try
 
 object SimpleMap {
 
   case class Config(src: Option[String] = None, dst: Option[String] = None,
-    blocks: Int = 0, blockSize: Int = 0, nparts: Int = 1,
-    size: Int = 1, nodes: Int = 1)
+                    blocks: Int = 0, blockSize: Int = 0, nparts: Int = 1,
+                    size: Int = 1, nodes: Int = 1)
 
   def nanoTime[R](block: => R): (Double, R) = {
     val t0 = System.nanoTime()
@@ -22,7 +24,7 @@ object SimpleMap {
 
   def parseCommandLine(args: Array[String]): Option[Config] = {
     val parser = new scopt.OptionParser[Config]("scopt") {
-      head("SimpleMap", "0.1.x")
+      head("simplemap-spark-scala", "0.1.x")
       opt[String]('s', "src") action { (x, c) =>
         c.copy(src = Some(x))
       } text ("s/src is a String property")
@@ -31,19 +33,19 @@ object SimpleMap {
       } text ("d/dst is a String property")
       opt[Int]('b', "blocks") action { (x, c) =>
         c.copy(blocks = x)
-      } text ("b/blocks is a String property")
+      } text ("b/blocks is a int property")
       opt[Int]('s', "block_size") action { (x, c) =>
         c.copy(blockSize = x)
-      } text ("s/block_size is a String property")
+      } text ("s/blockSize is an int property")
       opt[Int]('n', "nodes") action { (x, c) =>
         c.copy(nodes = x)
-      } text ("p/nparts is a String property")
+      } text ("n/nodes is an int property")
       opt[Int]('p', "nparts") action { (x, c) =>
         c.copy(nparts = x)
-      } text ("p/nparts is a String property")
+      } text ("p/nparts is an int property")
       opt[Int]('z', "size") action { (x, c) =>
         c.copy(size = x)
-      } text ("p/nparts is a String property")
+      } text ("z/size is an int property")
       help("help") text ("prints this usage text")
 
     }
@@ -56,18 +58,20 @@ object SimpleMap {
     Try { outdir.mkdirs() } getOrElse (false)
   }
 
-  def add_vec3_insitu(arr: Array[Array[Double]], vec: Array[Double]): Unit = {
+  def add_vec3_in_place(arr: Array[Array[Double]], vec: Array[Double]): Array[Array[Double]] = {
     for (i <- 0 to arr.length)
       for (j <- 0 to vec.length)
         arr(i)(j) += vec(j)
+    vec
   }
 
-  def add_vec3_zipped(arr: Array[Array[Double]], vec: Array[Double]): Unit = {
+  def add_vec3_zipped(arr: Array[Array[Double]], vec: Array[Double]): Array[Array[Double]] = {
     for (i <- 0 to arr.length)
       arr(i) = (arr(i), vec).zipped.map(_ + _)
+    vec
   }
 
-  def generate(x: Int, blockCount: Int) = {
+  def generate(x: Int, blockCount: Int): Array[Array[Double]] = {
     val seed = System.nanoTime() / (x + 1)
     //np.random.seed(seed)
     print(s"($x) generating $blockCount vectors...")
@@ -75,7 +79,18 @@ object SimpleMap {
     val b = 1000
     val r = new scala.util.Random(seed)
     val arr = Array.fill(blockCount, 3)(r.nextDouble)
-    (x, arr)
+    arr
+  }
+
+  def rddFromGenerate(sc: SparkContext, config: Config): RDD[(Array[Array[Double]])] = {
+    val rdd = sc.parallelize(0 to config.blocks, config.nodes * 12 * config.nparts)
+    val gen_block_count = (config.blockSize * 1E6 / 24).toInt // 24 bytes per vector
+    rdd.map(item => generate(item, gen_block_count))
+  }
+
+  def rddFromFile(sc: SparkContext, config: Config): RDD[(Array[Array[Double]])] = {
+    // TODO: Port code to read from file.
+    rddFromGenerate(sc, config)
   }
 
   def main(args: Array[String]) {
@@ -84,18 +99,13 @@ object SimpleMap {
 
     createResultsDir(config.dst.getOrElse("."), "/results")
 
-    if (config.blocks > 0 && config.blockSize > 0) {
-      val rdd = sc.parallelize(0 to config.blocks, config.nodes * 12 * config.nparts)
-      val gen_block_count = (config.blockSize * 1E6 / 24).toInt // 24 bytes per vector
-      println(s"generating ${config.blocks} of $gen_block_count vectors each...")
-      //outfile.write("generating data...\n")
-      //outfile.write("partition_multiplier: "+str(args.nparts)+"\n")
-      //outfile.write("gen_num_blocks: "+str(gen_num_blocks)+"\n")
-      //outfile.write("gen_block_size: "+str(gen_block_size)+"\n")
-      //outfile.write("total_data_size: "+str(gen_num_blocks*gen_block_size)+"\n")
-      val A = rdd.map(x => generate(x, gen_block_count))
+    val a =
+      if (config.blocks > 0 && config.blockSize > 0)
+        rddFromGenerate(sc, config)
+      else
+        rddFromFile(sc, config)
 
-    }
-    println(config)
+    val shift = Array(25.25, -12.125, 6.333)
+    val b = a.map(x => add_vec3_in_place(x, shift))
   }
 }
