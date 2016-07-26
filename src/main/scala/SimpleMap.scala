@@ -116,13 +116,10 @@ object SimpleMap {
     rdd.map(binFileInfo => parseVectors(binFileInfo))
   }
 
-  def nextDoubleFromStream(dis: DataInputStream): (Boolean, Double) = {
+  def nextDoubleFromStream(dis: DataInputStream): Option[Double] = {
     Try {
       dis.readDouble
-    } match {
-      case Success(f) => (true, f)
-      case Failure(f) => (false, Double.NaN)
-    }
+    } toOption
   }
 
   def parseVectors(binFileInfo: (String, PortableDataStream)): DenseVector[Double] = {
@@ -130,7 +127,7 @@ object SimpleMap {
     val dis = bin.open()
     val iter = Iterator.continually(nextDoubleFromStream(dis))
     // Looks like DenseVector can initialize from an (infinite/indefinite) iterator!
-    val scalaArray = iter.takeWhile(_._1).map(_._2).toArray
+    val scalaArray = iter.takeWhile(_.isDefined).map(_.get).toArray
     DenseVector(scalaArray)
   }
 
