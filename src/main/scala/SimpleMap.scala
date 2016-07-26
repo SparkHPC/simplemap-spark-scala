@@ -8,9 +8,8 @@ package edu.luc.cs
 import org.apache.spark.SparkContext
 import org.apache.spark.input.PortableDataStream
 import org.apache.spark.rdd.RDD
-import scala.util.{Try, Success, Failure}
+import scala.util.{ Try, Success, Failure }
 import java.io._
-import scala.util.Try
 import breeze.linalg._
 
 // Not using these yet. Keeping for future reporting work.
@@ -131,7 +130,8 @@ object SimpleMap {
     val dis = bin.open()
     val iter = Iterator.continually(nextDoubleFromStream(dis))
     // Looks like DenseVector can initialize from an (infinite/indefinite) iterator!
-    DenseVector(iter.takeWhile(n => n._1))
+    val scalaArray = iter.takeWhile(_._1).map(_._2).toArray
+    DenseVector(scalaArray)
   }
 
   def doShift(a: RDD[DenseVector[Double]]): RDD[DenseVector[Double]] = {
@@ -154,7 +154,7 @@ object SimpleMap {
   // command-line parameters
 
   case class Config(src: Option[String] = None, dst: Option[String] = None, cores: Int = 12,
-                    generate: Boolean = false, blocks: Int = 0, blockSize: Int = 0,
-                    nparts: Int = 1, size: Int = 1, nodes: Int = 1)
+    generate: Boolean = false, blocks: Int = 0, blockSize: Int = 0,
+    nparts: Int = 1, size: Int = 1, nodes: Int = 1)
 
 }
