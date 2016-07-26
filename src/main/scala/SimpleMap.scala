@@ -1,19 +1,49 @@
+/*
+ * SimpleMap: benchmark that shows how to work with binary data files and perform an inplace vector
+ * shift. This uses Breeze DenseVector and stays in vector as long as possible until a DenseMatrix is
+ * actually needed.
+ */
 package edu.luc.cs
 
-import java.nio.file.Paths
-
 import org.apache.spark.SparkContext
-import java.io._
-
+import org.apache.spark.input.PortableDataStream
 import org.apache.spark.rdd.RDD
-
+import scala.util.{ Try, Success, Failure }
+import scala.collection.mutable._
+import java.io._
 import scala.util.Try
+import breeze.linalg._
+
+// Not using these yet. Keeping for future reporting work.
+import org.json4s._
+import org.json4s.jackson._
+import org.json4s.jackson.JsonMethods._
+import org.json4s.JsonDSL._
 
 object SimpleMap {
 
-  case class Config(src: Option[String] = None, dst: Option[String] = None,
-                    blocks: Int = 0, blockSize: Int = 0, nparts: Int = 1,
-                    size: Int = 1, nodes: Int = 1)
+  def main(args: Array[String]) {
+    val config = parseCommandLine(args).getOrElse(Config())
+    val sc = new SparkContext()
+
+    val aOpt =
+      if (config.generate) {
+        Some(rddFromGenerate(sc, config))
+      } else if (config.src != None) {
+        createResultsDir(config.dst.getOrElse("."), "/results")
+        Some(rddFromBinaryFile(sc, config))
+      } else {
+        println("Either --src or --generate must be specified")
+        sc.stop
+        None
+      }
+
+    val a = aOpt.get
+    val b = doShift(a)
+
+    // TODO: Still working on adding performance/timing/results info.
+
+  }
 
   def nanoTime[R](block: => R): (Double, R) = {
     val t0 = System.nanoTime()
@@ -22,12 +52,16 @@ object SimpleMap {
     (t1 - t0, result)
   }
 
+
   def parseCommandLine(args: Array[String]): Option[Config] = {
     val parser = new scopt.OptionParser[Config]("scopt") {
       head("simplemap-spark-scala", "0.1.x")
       opt[String]('s', "src") action { (x, c) =>
         c.copy(src = Some(x))
       } text ("s/src is a String property")
+      opt[String]('g', "generate") action { (_, c) =>
+        c.copy(generate = true)
+      } text ("g/generate is a Boolean property")
       opt[String]('d', "dst") action { (x, c) =>
         c.copy(dst = Some(x))
       } text ("d/dst is a String property")
@@ -46,32 +80,30 @@ object SimpleMap {
       opt[Int]('z', "size") action { (x, c) =>
         c.copy(size = x)
       } text ("z/size is an int property")
+      opt[Int]('c', "cores") action { (x, c) =>
+        c.copy(cores = x)
+      } text ("c/cores is an int property (default to 12 for dual-hexcore on Cooley)")
+
       help("help") text ("prints this usage text")
 
     }
-    // parser.parse returns Option[C]
     parser.parse(args, Config())
   }
 
   def createResultsDir(dst: String, resultsDirName: String): Boolean = {
     val outdir = new File(dst, resultsDirName)
-    Try { outdir.mkdirs() } getOrElse (false)
+    Try {
+      outdir.mkdirs()
+    } getOrElse (false)
   }
 
-  def add_vec3_in_place(arr: Array[Array[Double]], vec: Array[Double]): Array[Array[Double]] = {
-    for (i <- 0 to arr.length)
-      for (j <- 0 to vec.length)
-        arr(i)(j) += vec(j)
-    vec
+  def rddFromGenerate(sc: SparkContext, config: Config): RDD[DenseVector[Double]] = {
+    val rdd = sc.parallelize(0 to config.blocks, config.nodes * 12 * config.nparts)
+    val gen_block_count = (config.blockSize * 1E6 / 24).toInt // 24 bytes per vector
+    rdd.map(item => generate(item, gen_block_count))
   }
 
-  def add_vec3_zipped(arr: Array[Array[Double]], vec: Array[Double]): Array[Array[Double]] = {
-    for (i <- 0 to arr.length)
-      arr(i) = (arr(i), vec).zipped.map(_ + _)
-    vec
-  }
-
-  def generate(x: Int, blockCount: Int): Array[Array[Double]] = {
+  def generate(x: Int, blockCount: Int): DenseVector[Double] = {
     val seed = System.nanoTime() / (x + 1)
     //np.random.seed(seed)
     print(s"($x) generating $blockCount vectors...")
@@ -79,33 +111,69 @@ object SimpleMap {
     val b = 1000
     val r = new scala.util.Random(seed)
     val arr = Array.fill(blockCount, 3)(r.nextDouble)
+    val darr = DenseVector.fill(blockCount * 3)(r.nextDouble)
+    darr
+  }
+
+  def rddFromBinaryFile(sc: SparkContext, config: Config): RDD[DenseVector[Double]] = {
+    val rdd = sc.binaryFiles(config.src.get)
+    rdd.map(binFileInfo => parseVectors(binFileInfo))
+  }
+
+  def parseVectors(binFileInfo: (String, PortableDataStream)): DenseVector[Double] = {
+    val (path, bin) = binFileInfo
+    val din = bin.open()
+    // Mutable needed because we don't know the number of floats in the file.
+    // This is an attempt to be faithful to np.fromstring() but might be more efficient than same.
+    // We're going to build the list first and then efficiently convert it to an immutable Array and DenseMatrix
+    // in Breeze.
+
+    val floatList = MutableList[Double]()
+
+    // TODO: Get rid of var and make this code immutable
+    // TODO: Rework into a comprehension
+    var continue = true
+
+    while (continue) {
+      val floatOpt = Try {
+        din.readDouble
+      }
+      floatOpt match {
+        case Success(f) =>
+          floatList += f
+        case Failure(f) =>
+          continue = false
+      }
+    }
+    DenseVector(floatList.toArray)
+  }
+
+  def doShift(a: RDD[DenseVector[Double]]): RDD[DenseVector[Double]] = {
+    val shift = DenseVector(25.25, -12.125, 6.333)
+    a.map(x => add_xyz_vector(x, shift))
+  }
+
+  def add_xyz_vector(arr: DenseVector[Double], vec: DenseVector[Double]): DenseVector[Double] = {
+    require {
+      // a valid shift is an (x, y, z) vector of length 3.
+      vec.length == 3
+    }
+    val n = arr.length / 3
+    for (i <- 0 to n) {
+      val low = i * 3
+      val high = low + 2
+      arr(low to high) :+= vec
+    }
     arr
   }
 
-  def rddFromGenerate(sc: SparkContext, config: Config): RDD[(Array[Array[Double]])] = {
-    val rdd = sc.parallelize(0 to config.blocks, config.nodes * 12 * config.nparts)
-    val gen_block_count = (config.blockSize * 1E6 / 24).toInt // 24 bytes per vector
-    rdd.map(item => generate(item, gen_block_count))
-  }
+  // This is used to hold all of the command-line argument settings. Scala's way of having a lightweight class.
+  // Replaces most uses of dictionaries in other languages.
 
-  def rddFromFile(sc: SparkContext, config: Config): RDD[(Array[Array[Double]])] = {
-    // TODO: Port code to read from file.
-    rddFromGenerate(sc, config)
-  }
+  case class Config(src: Option[String] = None, dst: Option[String] = None, cores: Int = 12,
+                     generate: Boolean = false, blocks: Int = 0, blockSize: Int = 0,
+                     nparts: Int = 1, size: Int = 1, nodes: Int = 1
+                   )
 
-  def main(args: Array[String]) {
-    val config = parseCommandLine(args).getOrElse(Config())
-    val sc = new SparkContext()
 
-    createResultsDir(config.dst.getOrElse("."), "/results")
-
-    val a =
-      if (config.blocks > 0 && config.blockSize > 0)
-        rddFromGenerate(sc, config)
-      else
-        rddFromFile(sc, config)
-
-    val shift = Array(25.25, -12.125, 6.333)
-    val b = a.map(x => add_vec3_in_place(x, shift))
-  }
 }
