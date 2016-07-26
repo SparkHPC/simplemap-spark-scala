@@ -141,7 +141,9 @@ object SimpleMap {
 
   def add_xyz_vector(vector: DenseVector[Double], shift: DenseVector[Double]): DenseVector[Double] = {
     val n = vector.length / shift.length
-    require { vector.length % shift.length == 0 }
+    require {
+      vector.length % shift.length == 0
+    }
     for (i <- 0 to n) {
       val low = i * shift.length
       val high = low + shift.length - 1
