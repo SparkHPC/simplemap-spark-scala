@@ -56,7 +56,7 @@ object SimpleMap {
       opt[String]('s', "src") action { (x, c) =>
         c.copy(src = Some(x))
       } text ("s/src is a String property")
-      opt[String]('g', "generate") action { (_, c) =>
+      opt[Unit]('g', "generate") action { (_, c) =>
         c.copy(generate = true)
       } text ("g/generate is a Boolean property")
       opt[String]('d', "dst") action { (x, c) =>
