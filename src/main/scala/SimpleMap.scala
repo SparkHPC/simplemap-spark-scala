@@ -8,8 +8,7 @@ package edu.luc.cs
 import org.apache.spark.SparkContext
 import org.apache.spark.input.PortableDataStream
 import org.apache.spark.rdd.RDD
-import scala.util.{ Try, Success, Failure }
-import scala.collection.mutable._
+import scala.util.{Try, Success, Failure}
 import java.io._
 import scala.util.Try
 import breeze.linalg._
@@ -51,7 +50,6 @@ object SimpleMap {
     val t1 = System.nanoTime()
     (t1 - t0, result)
   }
-
 
   def parseCommandLine(args: Array[String]): Option[Config] = {
     val parser = new scopt.OptionParser[Config]("scopt") {
@@ -98,21 +96,20 @@ object SimpleMap {
   }
 
   def rddFromGenerate(sc: SparkContext, config: Config): RDD[DenseVector[Double]] = {
-    val rdd = sc.parallelize(0 to config.blocks, config.nodes * 12 * config.nparts)
+    val rdd = sc.parallelize(0 to config.blocks, config.nodes * config.cores * config.nparts)
     val gen_block_count = (config.blockSize * 1E6 / 24).toInt // 24 bytes per vector
     rdd.map(item => generate(item, gen_block_count))
   }
 
-  def generate(x: Int, blockCount: Int): DenseVector[Double] = {
-    val seed = System.nanoTime() / (x + 1)
+  def generate(id: Int, blockCount: Int): DenseVector[Double] = {
+    val seed = System.nanoTime() / (id + 1)
     //np.random.seed(seed)
-    print(s"($x) generating $blockCount vectors...")
+    print(s"($id) generating $blockCount vectors...")
     val a = -1000
     val b = 1000
     val r = new scala.util.Random(seed)
-    val arr = Array.fill(blockCount, 3)(r.nextDouble)
-    val darr = DenseVector.fill(blockCount * 3)(r.nextDouble)
-    darr
+    //val arr = Array.fill(blockCount, 3)(a + (b - a) * r.nextDouble)
+    DenseVector.fill(blockCount * 3)(a + (b - a) * r.nextDouble)
   }
 
   def rddFromBinaryFile(sc: SparkContext, config: Config): RDD[DenseVector[Double]] = {
@@ -120,32 +117,21 @@ object SimpleMap {
     rdd.map(binFileInfo => parseVectors(binFileInfo))
   }
 
+  def nextDoubleFromStream(dis: DataInputStream): (Boolean, Double) = {
+    Try {
+      dis.readDouble
+    } match {
+      case Success(f) => (true, f)
+      case Failure(f) => (false, Double.NaN)
+    }
+  }
+
   def parseVectors(binFileInfo: (String, PortableDataStream)): DenseVector[Double] = {
     val (path, bin) = binFileInfo
-    val din = bin.open()
-    // Mutable needed because we don't know the number of floats in the file.
-    // This is an attempt to be faithful to np.fromstring() but might be more efficient than same.
-    // We're going to build the list first and then efficiently convert it to an immutable Array and DenseMatrix
-    // in Breeze.
-
-    val floatList = MutableList[Double]()
-
-    // TODO: Get rid of var and make this code immutable
-    // TODO: Rework into a comprehension
-    var continue = true
-
-    while (continue) {
-      val floatOpt = Try {
-        din.readDouble
-      }
-      floatOpt match {
-        case Success(f) =>
-          floatList += f
-        case Failure(f) =>
-          continue = false
-      }
-    }
-    DenseVector(floatList.toArray)
+    val dis = bin.open()
+    val iter = Iterator.continually(nextDoubleFromStream(dis))
+    // Looks like DenseVector can initialize from an (infinite/indefinite) iterator!
+    DenseVector(iter.takeWhile(n => n._1))
   }
 
   def doShift(a: RDD[DenseVector[Double]]): RDD[DenseVector[Double]] = {
@@ -153,27 +139,22 @@ object SimpleMap {
     a.map(x => add_xyz_vector(x, shift))
   }
 
-  def add_xyz_vector(arr: DenseVector[Double], vec: DenseVector[Double]): DenseVector[Double] = {
-    require {
-      // a valid shift is an (x, y, z) vector of length 3.
-      vec.length == 3
-    }
-    val n = arr.length / 3
+  def add_xyz_vector(vector: DenseVector[Double], shift: DenseVector[Double]): DenseVector[Double] = {
+    val n = vector.length / shift.length
+    require { vector.length % shift.length == 0 }
     for (i <- 0 to n) {
-      val low = i * 3
-      val high = low + 2
-      arr(low to high) :+= vec
+      val low = i * shift.length
+      val high = low + shift.length - 1
+      // one of the few places where we go mutable to avoid copying a large array
+      vector(low to high) :+= shift
     }
-    arr
+    vector
   }
 
-  // This is used to hold all of the command-line argument settings. Scala's way of having a lightweight class.
-  // Replaces most uses of dictionaries in other languages.
+  // command-line parameters
 
   case class Config(src: Option[String] = None, dst: Option[String] = None, cores: Int = 12,
-                     generate: Boolean = false, blocks: Int = 0, blockSize: Int = 0,
-                     nparts: Int = 1, size: Int = 1, nodes: Int = 1
-                   )
-
+                    generate: Boolean = false, blocks: Int = 0, blockSize: Int = 0,
+                    nparts: Int = 1, size: Int = 1, nodes: Int = 1)
 
 }
