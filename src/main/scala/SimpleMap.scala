@@ -80,9 +80,15 @@ object SimpleMap {
       opt[Int]('c', "cores") action { (x, c) =>
         c.copy(cores = x)
       } text ("c/cores is an int property (default to 12 for dual-hexcore on Cooley)")
+      opt[Unit]('j', "json") action { (_, c) =>
+        c.copy(outputJson = true)
+      } text (s"outputJson is whether to write JSON reports")
+
+      opt[Unit]('x', "xml") action { (_, c) =>
+        c.copy(outputXML = true)
+      } text (s"outputXML is whether to write XML reports")
 
       help("help") text ("prints this usage text")
-
     }
     parser.parse(args, Config())
   }
@@ -117,9 +123,7 @@ object SimpleMap {
   }
 
   def nextDoubleFromStream(dis: DataInputStream): Option[Double] = {
-    Try {
-      dis.readDouble
-    } toOption
+    Try { dis.readDouble }.toOption
   }
 
   def parseVectors(binFileInfo: (String, PortableDataStream)): DenseVector[Double] = {
@@ -152,8 +156,42 @@ object SimpleMap {
 
   // command-line parameters
 
-  case class Config(src: Option[String] = None, dst: Option[String] = None, cores: Int = 12,
-    generate: Boolean = false, blocks: Int = 0, blockSize: Int = 0,
-    nparts: Int = 1, size: Int = 1, nodes: Int = 1)
+  case class Config(
+      src: Option[String] = None,
+      dst: Option[String] = None,
+      cores: Int = 12,
+      generate: Boolean = false,
+      blocks: Int = 0,
+      blockSize: Int = 0,
+      nparts: Int = 1,
+      size: Int = 1,
+      nodes: Int = 1,
+      outputJson: Boolean = false,
+      outputXML: Boolean = false
+  ) {
 
+    def toXML(): xml.Elem = {
+      <config>
+        <property key="src" value={ src.getOrElse("") }/>
+        <property key="dst" value={ src.getOrElse("") }/>
+        <property key="cores" value={ cores.toString }/>
+        <property key="generate" value={ generate.toString }/>
+        <property key="blocks" value={ blocks.toString }/>
+        <property key="blockSize" value={ blockSize.toString }/>
+        <property key="nparts" value={ nparts.toString }/>
+        <property key="size" value={ size.toString }/>
+        <property key="nodes" value={ nodes.toString }/>
+        <property key="outputJson" value={ outputJson.toString }/>
+        <property key="outputXML" value={ outputXML.toString }/>
+      </config>
+    }
+
+    def toJSON(): org.json4s.JsonAST.JObject = {
+      ("src" -> src.getOrElse("")) ~ ("dst" -> dst.getOrElse("")) ~ ("cores" -> cores.toString) ~
+        ("generate" -> generate.toString) ~ ("blocks" -> blocks.toString) ~ ("blockSize" -> blockSize.toString) ~
+        ("nparts" -> nparts.toString) ~ ("size" -> size.toString) ~ ("nodes" -> nodes.toString) ~
+        ("outputJson" -> outputJson.toString) ~ ("outputXML" -> outputXML.toString)
+    }
+
+  }
 }
