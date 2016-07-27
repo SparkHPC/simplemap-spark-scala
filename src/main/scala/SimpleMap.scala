@@ -25,7 +25,7 @@ object SimpleMap {
     val (mapTime, a) = nanoTime {
       if (config.generate) {
         rddFromGenerate(sc, config)
-      } else if (config.src != None) {
+      } else if (config.src.isDefined) {
         createResultsDir(config.dst.getOrElse("."), "/results")
         rddFromBinaryFile(sc, config)
       } else {
