@@ -3,6 +3,7 @@
  * shift. This uses Breeze DenseVector and stays in vector as long as possible until a DenseMatrix is
  * actually needed.
  */
+
 package edu.luc.cs
 
 import org.apache.spark.SparkContext
@@ -12,9 +13,6 @@ import scala.util.{ Try, Success, Failure }
 import java.io._
 import breeze.linalg._
 
-// Not using these yet. Keeping for future reporting work.
-import org.json4s._
-import org.json4s.jackson._
 import org.json4s.jackson.JsonMethods._
 import org.json4s.JsonDSL._
 
@@ -24,23 +22,41 @@ object SimpleMap {
     val config = parseCommandLine(args).getOrElse(Config())
     val sc = new SparkContext()
 
-    val aOpt =
+    val (mapTime, a) = nanoTime {
       if (config.generate) {
-        Some(rddFromGenerate(sc, config))
+        rddFromGenerate(sc, config)
       } else if (config.src != None) {
         createResultsDir(config.dst.getOrElse("."), "/results")
-        Some(rddFromBinaryFile(sc, config))
+        rddFromBinaryFile(sc, config)
       } else {
-        println("Either --src or --generate must be specified")
         sc.stop
-        None
+        rddNOP(sc, config)
       }
+    }
 
-    val a = aOpt.get
-    val b = doShift(a)
+    val (shiftTime, b) = nanoTime {
+      doShift(a)
+    }
 
-    // TODO: Still working on adding performance/timing/results info.
+    val report = Report(mapTime, shiftTime)
+    if (config.outputJson)
+      writeJsonReport(config, report)
+    else if (config.outputXML)
+      writeXmlReport(config, report)
+  }
 
+  def writeJsonReport(config: Config, data: Report): Unit = {
+    val results = "results" -> (config.toJSON ~ data.toJSON)
+    println(pretty(results))
+  }
+
+  def writeXmlReport(config: Config, data: Report): Unit = {
+    val results = <results>
+                    config.toXML
+      data.toXML
+                  </results>
+    val pprinter = new scala.xml.PrettyPrinter(80, 2) // scalastyle:ignore
+    println(pprinter.format(results)) // scalastyle:ignore
   }
 
   def nanoTime[R](block: => R): (Double, R) = {
@@ -100,6 +116,28 @@ object SimpleMap {
     } getOrElse (false)
   }
 
+  def rddFromBinaryFile(sc: SparkContext, config: Config): RDD[DenseVector[Double]] = {
+    val rdd = sc.binaryFiles(config.src.get)
+    rdd.map(binFileInfo => parseVectors(binFileInfo))
+  }
+
+  def parseVectors(binFileInfo: (String, PortableDataStream)): DenseVector[Double] = {
+    val (path, bin) = binFileInfo
+    val dis = bin.open()
+    val iter = Iterator.continually(nextDoubleFromStream(dis))
+    // Looks like DenseVector can initialize from an (infinite/indefinite) iterator!
+    val scalaArray = iter.takeWhile(_.isDefined).map(_.get).toArray
+    DenseVector(scalaArray)
+  }
+
+  def nextDoubleFromStream(dis: DataInputStream): Option[Double] = {
+    Try { dis.readDouble }.toOption
+  }
+
+  def rddNOP(sc: SparkContext, config: Config): RDD[DenseVector[Double]] = {
+    rddFromGenerate(sc, Config())
+  }
+
   def rddFromGenerate(sc: SparkContext, config: Config): RDD[DenseVector[Double]] = {
     val rdd = sc.parallelize(0 to config.blocks, config.nodes * config.cores * config.nparts)
     val gen_block_count = (config.blockSize * 1E6 / 24).toInt // 24 bytes per vector
@@ -115,24 +153,6 @@ object SimpleMap {
     val r = new scala.util.Random(seed)
     //val arr = Array.fill(blockCount, 3)(a + (b - a) * r.nextDouble)
     DenseVector.fill(blockCount * 3)(a + (b - a) * r.nextDouble)
-  }
-
-  def rddFromBinaryFile(sc: SparkContext, config: Config): RDD[DenseVector[Double]] = {
-    val rdd = sc.binaryFiles(config.src.get)
-    rdd.map(binFileInfo => parseVectors(binFileInfo))
-  }
-
-  def nextDoubleFromStream(dis: DataInputStream): Option[Double] = {
-    Try { dis.readDouble }.toOption
-  }
-
-  def parseVectors(binFileInfo: (String, PortableDataStream)): DenseVector[Double] = {
-    val (path, bin) = binFileInfo
-    val dis = bin.open()
-    val iter = Iterator.continually(nextDoubleFromStream(dis))
-    // Looks like DenseVector can initialize from an (infinite/indefinite) iterator!
-    val scalaArray = iter.takeWhile(_.isDefined).map(_.get).toArray
-    DenseVector(scalaArray)
   }
 
   def doShift(a: RDD[DenseVector[Double]]): RDD[DenseVector[Double]] = {
@@ -152,6 +172,20 @@ object SimpleMap {
       vector(low to high) :+= shift
     }
     vector
+  }
+
+  case class Report(mapTime: Double, shiftTime: Double) {
+    def toXML(): xml.Node = {
+      <report>
+        <time t={ mapTime.toString } unit="ns"/>
+        <time t={ shiftTime.toString } unit="ns"/>
+      </report>
+    }
+
+    def toJSON(): org.json4s.JsonAST.JObject = {
+      val timeData = ("mapTime" -> mapTime.toString) ~ ("shiftTime" -> shiftTime.toString)
+      ("report" -> timeData)
+    }
   }
 
   // command-line parameters
@@ -187,10 +221,11 @@ object SimpleMap {
     }
 
     def toJSON(): org.json4s.JsonAST.JObject = {
-      ("src" -> src.getOrElse("")) ~ ("dst" -> dst.getOrElse("")) ~ ("cores" -> cores.toString) ~
+      val properties = ("src" -> src.getOrElse("")) ~ ("dst" -> dst.getOrElse("")) ~ ("cores" -> cores.toString) ~
         ("generate" -> generate.toString) ~ ("blocks" -> blocks.toString) ~ ("blockSize" -> blockSize.toString) ~
         ("nparts" -> nparts.toString) ~ ("size" -> size.toString) ~ ("nodes" -> nodes.toString) ~
         ("outputJson" -> outputJson.toString) ~ ("outputXML" -> outputXML.toString)
+      ("config" -> properties)
     }
 
   }
