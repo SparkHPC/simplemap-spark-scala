@@ -52,8 +52,7 @@ object SimpleMap {
 
   def writeXmlReport(config: Config, data: Report): Unit = {
     val results = <results>
-                    config.toXML
-      data.toXML
+                    { config.toXML }{ data.toXML }
                   </results>
     val pprinter = new scala.xml.PrettyPrinter(80, 2) // scalastyle:ignore
     println(pprinter.format(results)) // scalastyle:ignore
@@ -131,7 +130,9 @@ object SimpleMap {
   }
 
   def nextDoubleFromStream(dis: DataInputStream): Option[Double] = {
-    Try { dis.readDouble }.toOption
+    Try {
+      dis.readDouble
+    }.toOption
   }
 
   def rddNOP(sc: SparkContext, config: Config): RDD[DenseVector[Double]] = {
@@ -229,4 +230,5 @@ object SimpleMap {
     }
 
   }
+
 }
