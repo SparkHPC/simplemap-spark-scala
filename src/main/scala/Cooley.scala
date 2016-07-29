@@ -15,7 +15,15 @@ object GenerateBashScripts {
 
   def main(args: Array[String]) {
     val scripts = generate()
-    scripts foreach println
+    scripts foreach saveFile
+  }
+
+  def saveFile(fileInfo: (String, String)): Unit = {
+    // TODO: Use Try/Success/Failure to harden this.
+    val file = new File("./scripts", fileInfo._1)
+    val bw = new BufferedWriter(new FileWriter(file))
+    bw.write(fileInfo._2)
+    bw.close()
   }
 
   def text(nodes: Int, nparts: Int, blocks: Int, blockSize: Int): String =
