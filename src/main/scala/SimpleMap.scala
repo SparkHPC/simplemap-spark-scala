@@ -89,9 +89,6 @@ object SimpleMap {
       opt[Int]('p', "nparts") action { (x, c) =>
         c.copy(nparts = x)
       } text ("p/nparts is an int property")
-      opt[Int]('z', "size") action { (x, c) =>
-        c.copy(size = x)
-      } text ("z/size is an int property")
       opt[Int]('c', "cores") action { (x, c) =>
         c.copy(cores = x)
       } text ("c/cores is an int property (default to 12 for dual-hexcore on Cooley)")
