@@ -98,13 +98,14 @@ object GenerateBashScripts {
       |   echo "Running: "$$SPARK_HOME/bin/spark-submit \\
       |      --master $$SPARK_MASTER_URI $$ASSEMBLY \\
       |      --blocks $blocks --block_size $blockSize --nodes $nodes \\
-      |      --nparts $nparts --cores $cores >> $$JOB_LOG
+      |      --nparts $nparts --cores $cores \\
+      |      --json --xml >> $$JOB_LOG
       |
       |   $$SPARK_HOME/bin/spark-submit \\
       |      --master $$SPARK_MASTER_URI $$ASSEMBLY \\
       |      --blocks $blocks --block_size $blockSize --nodes $nodes \\
-      |      --nparts $nparts --cores $cores >> $$JOB_LOG
-      |      --dim %(dim)s --nodes %(nodes)s --partitions %(partitions)s --workload %(workload)s --outputdir /home/thiruvat/logs --json --xml >> $$JOB_LOG
+      |      --nparts $nparts --cores $cores \\
+      |      --json --xml >> $$JOB_LOG
       |else
       |   echo "Could not find Scala target assembly. No experiments run." >> $$JOB_LOG
       |fi
