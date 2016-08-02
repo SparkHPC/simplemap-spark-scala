@@ -39,15 +39,18 @@ object SimpleMap {
     }
 
     val report = Report(mapTime, shiftTime)
-    if (config.outputJson)
+    if (config.jsonFilename.isDefined)
       writeJsonReport(config, report)
-    else if (config.outputXML)
+    else if (config.xmlFilename.isDefined)
       writeXmlReport(config, report)
   }
 
   def writeJsonReport(config: Config, data: Report): Unit = {
     val results = "results" -> (config.toJSON ~ data.toJSON)
-    println(pretty(results))
+    val file = new File(config.jsonFilename.get)
+    val bw = new BufferedWriter(new FileWriter(file))
+    bw.write(pretty(results))
+    bw.close()
   }
 
   def writeXmlReport(config: Config, data: Report): Unit = {
@@ -55,7 +58,10 @@ object SimpleMap {
                     { config.toXML }{ data.toXML }
                   </results>
     val pprinter = new scala.xml.PrettyPrinter(80, 2) // scalastyle:ignore
-    println(pprinter.format(results)) // scalastyle:ignore
+    val file = new File(config.xmlFilename.get)
+    val bw = new BufferedWriter(new FileWriter(file))
+    bw.write(pprinter.format(results)) // scalastyle:ignore
+    bw.close()
   }
 
   def nanoTime[R](block: => R): (Double, R) = {
@@ -92,14 +98,12 @@ object SimpleMap {
       opt[Int]('c', "cores") action { (x, c) =>
         c.copy(cores = x)
       } text ("c/cores is an int property (default to 12 for dual-hexcore on Cooley)")
-      opt[Unit]('j', "json") action { (_, c) =>
-        c.copy(outputJson = true)
-      } text (s"outputJson is whether to write JSON reports")
-
-      opt[Unit]('x', "xml") action { (_, c) =>
-        c.copy(outputXML = true)
-      } text (s"outputXML is whether to write XML reports")
-
+      opt[String]('j', "json") action { (x, c) =>
+        c.copy(jsonFilename = Some(x))
+      } text (s"json <filename>is where to write JSON reports")
+      opt[String]('x', "xml") action { (x, c) =>
+        c.copy(xmlFilename = Some(x))
+      } text (s"xml <filename> is where to write XML reports")
       help("help") text ("prints this usage text")
     }
     parser.parse(args, Config())
@@ -198,8 +202,8 @@ object SimpleMap {
       nparts: Int = 1,
       size: Int = 1,
       nodes: Int = 1,
-      outputJson: Boolean = false,
-      outputXML: Boolean = false
+      jsonFilename: Option[String] = None,
+      xmlFilename: Option[String] = None
   ) {
 
     def toXML(): xml.Elem = {
@@ -213,8 +217,8 @@ object SimpleMap {
         <property key="nparts" value={ nparts.toString }/>
         <property key="size" value={ size.toString }/>
         <property key="nodes" value={ nodes.toString }/>
-        <property key="outputJson" value={ outputJson.toString }/>
-        <property key="outputXML" value={ outputXML.toString }/>
+        <property key="json" value={ jsonFilename.getOrElse("") }/>
+        <property key="xml" value={ xmlFilename.getOrElse("") }/>
       </config>
     }
 
@@ -222,7 +226,7 @@ object SimpleMap {
       val properties = ("src" -> src.getOrElse("")) ~ ("dst" -> dst.getOrElse("")) ~ ("cores" -> cores.toString) ~
         ("generate" -> generate.toString) ~ ("blocks" -> blocks.toString) ~ ("blockSize" -> blockSize.toString) ~
         ("nparts" -> nparts.toString) ~ ("size" -> size.toString) ~ ("nodes" -> nodes.toString) ~
-        ("outputJson" -> outputJson.toString) ~ ("outputXML" -> outputXML.toString)
+        ("jsonFilename" -> jsonFilename.getOrElse("")) ~ ("xmlFilename" -> xmlFilename.getOrElse(""))
       ("config" -> properties)
     }
 

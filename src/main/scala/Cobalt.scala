@@ -65,6 +65,8 @@ object GenerateBashScripts {
       |#
       |
       |JOB_LOG=$$HOME/logs/$$COBALT_JOBID.txt
+      |JOB_JSON=$$HOME/logs/$$COBALT_JOBID.json
+      |JOB_XML=$$HOME/logs/$$COBALT_JOBID.xml
       |
       |pushd $$HOME/code/spark
       |cat $$COBALT_NODEFILE > conf/slaves
@@ -99,13 +101,13 @@ object GenerateBashScripts {
       |      --master $$SPARK_MASTER_URI $$ASSEMBLY \\
       |      --blocks $blocks --block_size $blockSize --nodes $nodes \\
       |      --nparts $nparts --cores $cores \\
-      |      --json --xml >> $$JOB_LOG
+      |      --json $$LOG_JSON --xml $$LOG_XML >> $$JOB_LOG
       |
       |   $$SPARK_HOME/bin/spark-submit \\
       |      --master $$SPARK_MASTER_URI $$ASSEMBLY \\
       |      --blocks $blocks --block_size $blockSize --nodes $nodes \\
       |      --nparts $nparts --cores $cores \\
-      |      --json --xml >> $$JOB_LOG
+      |      --json $$LOG_JSON --xml $$LOG_XML >> $$JOB_LOG
       |else
       |   echo "Could not find Scala target assembly. No experiments run." >> $$JOB_LOG
       |fi
