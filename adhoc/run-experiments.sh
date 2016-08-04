@@ -12,7 +12,7 @@ jobid=""
 allocation=IME_BlockCoPolymers
 net=pubnet
 for nodes in $@; do
-  for script in ./scripts/$nodes/*.sh; do
+  for script in ./qscripts.d/$nodes/*.sh; do
      if [ "$jobid" == "" ]; then
         dependencies=""
      else
