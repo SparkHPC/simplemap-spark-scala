@@ -123,18 +123,17 @@ object SimpleMap {
     } getOrElse (false)
   }
 
-  def rddFromBinaryFile(sc: SparkContext, config: Config): RDD[DenseVector[Double]] = {
+  def rddFromBinaryFile(sc: SparkContext, config: Config): RDD[DenseMatrix[Double]] = {
     val rdd = sc.binaryFiles(config.src.get)
     rdd.map(binFileInfo => parseVectors(binFileInfo))
   }
 
-  def parseVectors(binFileInfo: (String, PortableDataStream)): DenseVector[Double] = {
+  def parseVectors(binFileInfo: (String, PortableDataStream)): DenseMatrix[Double] = {
     val (path, bin) = binFileInfo
     val dis = bin.open()
     val iter = Iterator.continually(nextDoubleFromStream(dis))
-    // Looks like DenseVector can initialize from an (infinite/indefinite) iterator!
     val scalaArray = iter.takeWhile(_.isDefined).map(_.get).toArray
-    DenseVector(scalaArray)
+    new DenseMatrix(scalaArray.length / 3, 3, scalaArray)
   }
 
   def nextDoubleFromStream(dis: DataInputStream): Option[Double] = {
@@ -143,17 +142,17 @@ object SimpleMap {
     }.toOption
   }
 
-  def rddNOP(sc: SparkContext, config: Config): RDD[DenseVector[Double]] = {
+  def rddNOP(sc: SparkContext, config: Config): RDD[DenseMatrix[Double]] = {
     rddFromGenerate(sc, Config())
   }
 
-  def rddFromGenerate(sc: SparkContext, config: Config): RDD[DenseVector[Double]] = {
+  def rddFromGenerate(sc: SparkContext, config: Config): RDD[DenseMatrix[Double]] = {
     val rdd = sc.parallelize(0 to config.blocks, config.nodes * config.cores * config.nparts)
     val gen_block_count = (config.blockSize * 1E6 / 24).toInt // 24 bytes per vector
     rdd.map(item => generate(item, gen_block_count))
   }
 
-  def generate(id: Int, blockCount: Int): DenseVector[Double] = {
+  def generate(id: Int, blockCount: Int): DenseMatrix[Double] = {
     val seed = System.nanoTime() / (id + 1)
     //np.random.seed(seed)
     print(s"($id) generating $blockCount vectors...")
@@ -161,24 +160,20 @@ object SimpleMap {
     val b = 1000
     val r = new scala.util.Random(seed)
     //val arr = Array.fill(blockCount, 3)(a + (b - a) * r.nextDouble)
-    DenseVector.fill(blockCount * 3)(a + (b - a) * r.nextDouble)
+    DenseMatrix.fill(blockCount, 3)(a + (b - a) * r.nextDouble)
   }
 
-  def doShift(a: RDD[DenseVector[Double]]): RDD[DenseVector[Double]] = {
+  def doShift(a: RDD[DenseMatrix[Double]]): RDD[DenseMatrix[Double]] = {
     val shift = DenseVector(25.25, -12.125, 6.333)
     a.map(x => add_xyz_vector(x, shift))
   }
 
-  def add_xyz_vector(vector: DenseVector[Double], shift: DenseVector[Double]): DenseVector[Double] = {
-    val n = vector.length / shift.length
+  def add_xyz_vector(vector: DenseMatrix[Double], shift: DenseVector[Double]): DenseMatrix[Double] = {
     require {
-      vector.length % shift.length == 0
+      vector.cols == shift.length
     }
-    for (i <- 0 to n) {
-      val low = i * shift.length
-      val high = low + shift.length - 1
-      // one of the few places where we go mutable to avoid copying a large array
-      vector(low to high) :+= shift
+    for (i <- 0 until vector.rows) {
+      vector(i, ::) :+= Transpose(shift)
     }
     vector
   }
