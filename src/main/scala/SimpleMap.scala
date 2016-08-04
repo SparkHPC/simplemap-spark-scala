@@ -41,7 +41,7 @@ object SimpleMap {
     val report = Report(mapTime, shiftTime)
     if (config.jsonFilename.isDefined)
       writeJsonReport(config, report)
-    else if (config.xmlFilename.isDefined)
+    if (config.xmlFilename.isDefined)
       writeXmlReport(config, report)
   }
 
@@ -60,6 +60,7 @@ object SimpleMap {
     val pprinter = new scala.xml.PrettyPrinter(80, 2) // scalastyle:ignore
     val file = new File(config.xmlFilename.get)
     val bw = new BufferedWriter(new FileWriter(file))
+    println("Wrote to XML file " + config.xmlFilename.get)
     bw.write(pprinter.format(results)) // scalastyle:ignore
     bw.close()
   }
@@ -179,8 +180,8 @@ object SimpleMap {
   case class Report(mapTime: Double, shiftTime: Double) {
     def toXML(): xml.Node = {
       <report>
-        <time t={ mapTime.toString } unit="ns"/>
-        <time t={ shiftTime.toString } unit="ns"/>
+        <time id="mapTime" t={ mapTime.toString } unit="ns"/>
+        <time id="shiftTime" t={ shiftTime.toString } unit="ns"/>
       </report>
     }
 
