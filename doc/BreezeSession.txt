@@ -1,0 +1,258 @@
+scala> import breeze.linalg._
+import breeze.linalg._
+
+scala> val dm = DenseMatrix.zeros(2, 3)
+<console>:10: error: ambiguous implicit values:
+ both object IntZero in object Zero of type breeze.storage.Zero.IntZero.type
+ and object ShortZero in object Zero of type breeze.storage.Zero.ShortZero.type
+ match expected type breeze.storage.Zero[V]
+       val dm = DenseMatrix.zeros(2, 3)
+                                 ^
+
+scala> val dm = DenseMatrix.zeros[Double](2, 3)
+dm: breeze.linalg.DenseMatrix[Double] =
+0.0  0.0  0.0
+0.0  0.0  0.0
+
+scala> m.rows
+<console>:11: error: not found: value m
+              m.rows
+              ^
+
+scala> dm.rows
+res1: Int = 2
+
+scala> dm.cols
+res2: Int = 3
+
+scala> val res = dm(::, *) + DenseVector(3.0, 4.0)
+res: breeze.linalg.DenseMatrix[Double] =
+3.0  3.0  3.0
+4.0  4.0  4.0
+
+scala> val res = dm(*, ::) + DenseVector(1.0, 1.0, 1.0)
+res: breeze.linalg.DenseMatrix[Double] =
+1.0  1.0  1.0
+1.0  1.0  1.0
+
+scala> dm(::, *)
+res3: breeze.linalg.BroadcastedColumns[breeze.linalg.DenseMatrix[Double],breeze.linalg.DenseVector[Double]] =
+BroadcastedColumns(0.0  0.0  0.0
+0.0  0.0  0.0  )
+
+scala> dm(::, 1)
+res4: breeze.linalg.DenseVector[Double] = DenseVector(0.0, 0.0)
+
+scala> val res = dm(*, ::) + DenseVector(1.0, 1.0, 1.0)
+res: breeze.linalg.DenseMatrix[Double] =
+1.0  1.0  1.0
+1.0  1.0  1.0
+
+scala> val res = dm(::, *) + DenseVector(3.0, 4.0)
+res: breeze.linalg.DenseMatrix[Double] =
+3.0  3.0  3.0
+4.0  4.0  4.0
+
+scala> res
+res5: breeze.linalg.DenseMatrix[Double] =
+3.0  3.0  3.0
+4.0  4.0  4.0
+
+scala> res(::, 1)
+res6: breeze.linalg.DenseVector[Double] = DenseVector(3.0, 4.0)
+
+scala> res(::, 1)
+res7: breeze.linalg.DenseVector[Double] = DenseVector(3.0, 4.0)
+
+scala> res(1, ::)
+res8: breeze.linalg.Transpose[breeze.linalg.DenseVector[Double]] = Transpose(DenseVector(4.0, 4.0, 4.0))
+
+scala> res(::, 1) :+= DenseVector(10.0, 20.0)
+res9: breeze.linalg.DenseVector[Double] = DenseVector(13.0, 24.0)
+
+scala> res
+res10: breeze.linalg.DenseMatrix[Double] =
+3.0  13.0  3.0
+4.0  24.0  4.0
+
+scala> res(0, ::) :+= DenseVector(10.0, 20.0)
+<console>:13: error: could not find implicit value for parameter op: breeze.linalg.operators.OpAdd.InPlaceImpl2[breeze.linalg.Transpose[breeze.linalg.DenseVector[Double]],breeze.linalg.DenseVector[Double]]
+              res(0, ::) :+= DenseVector(10.0, 20.0)
+                         ^
+
+scala> res(0, ::)
+res12: breeze.linalg.Transpose[breeze.linalg.DenseVector[Double]] = Transpose(DenseVector(3.0, 13.0, 3.0))
+
+scala> res(0, ::) :+= DenseVector(3.0, 4.0, 5.0)
+<console>:13: error: could not find implicit value for parameter op: breeze.linalg.operators.OpAdd.InPlaceImpl2[breeze.linalg.Transpose[breeze.linalg.DenseVector[Double]],breeze.linalg.DenseVector[Double]]
+              res(0, ::) :+= DenseVector(3.0, 4.0, 5.0)
+                         ^
+
+scala> res(0, ::) :+= Transpose(DenseVector(3.0, 4.0, 5.0))
+res14: breeze.linalg.Transpose[breeze.linalg.DenseVector[Double]] = Transpose(DenseVector(6.0, 17.0, 8.0))
+
+scala> res
+res15: breeze.linalg.DenseMatrix[Double] =
+6.0  17.0  8.0
+4.0  24.0  4.0
+
+scala> DenseMatrix.zeros[Double](10000, 3)
+res16: breeze.linalg.DenseMatrix[Double] =
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0...
+scala> val dm2 DenseMatrix.zeros[Double](10000, 3)
+<console>:1: error: illegal start of simple pattern
+       val dm2 DenseMatrix.zeros[Double](10000, 3)
+                          ^
+
+scala> val dm2 = DenseMatrix.zeros[Double](10000, 3)
+dm2: breeze.linalg.DenseMatrix[Double] =
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0  0.0  0.0
+0.0...
+scala> dm2.rows
+res17: Int = 10000
+
+scala> dm2.cols
+res18: Int = 3
+
+scala> res(0, ::) :+= Transpose(DenseVector(Array.f3.0, 4.0, 5.0))
+<console>:1: error: ')' expected but double literal found.
+       res(0, ::) :+= Transpose(DenseVector(Array.f3.0, 4.0, 5.0))
+                                                    ^
+
+scala> math.random
+res19: Double = 0.6794269467859896
+
+scala> Array.fill(math.random)(3)
+<console>:11: error: type mismatch;
+ found   : Double
+ required: Int
+              Array.fill(math.random)(3)
+                              ^
+
+scala> Array.fill(3)(math.random)
+res21: Array[Double] = Array(0.16852017047073775, 0.683312706374652, 0.35311474637829965)
+
+scala> val x = Array.fill(3)(math.random)
+x: Array[Double] = Array(0.29578790256973986, 0.4673174143755786, 0.6719933977004938)
+
+scala> res(0, ::) :+= Transpose(DenseVector(x))
+res22: breeze.linalg.Transpose[breeze.linalg.DenseVector[Double]] = Transpose(DenseVector(6.29578790256974, 17.46731741437558, 8.671993397700493))
+
+scala> res
+res23: breeze.linalg.DenseMatrix[Double] =
+6.29578790256974  17.46731741437558  8.671993397700493
+4.0               24.0               4.0
+
+scala> dm2(0, ::) :+= Transpose(DenseVector(x))
+res24: breeze.linalg.Transpose[breeze.linalg.DenseVector[Double]] = Transpose(DenseVector(0.29578790256973986, 0.4673174143755786, 0.6719933977004938))
+
+scala> dm2
+res25: breeze.linalg.DenseMatrix[Double] =
+0.29578790256973986  0.4673174143755786  0.6719933977004938
+0.0                  0.0                 0.0
+0.0                  0.0                 0.0
+0.0                  0.0                 0.0
+0.0                  0.0                 0.0
+0.0                  0.0                 0.0
+0.0                  0.0                 0.0
+0.0                  0.0                 0.0
+0.0                  0.0                 0.0
+0.0                  0.0                 0.0
+0.0                  0.0                 0.0
+0.0                  0.0                 0.0
+0.0      ...
+scala> dm2(1, ::) :+= Transpose(DenseVector(x))
+res26: breeze.linalg.Transpose[breeze.linalg.DenseVector[Double]] = Transpose(DenseVector(0.29578790256973986, 0.4673174143755786, 0.6719933977004938))
