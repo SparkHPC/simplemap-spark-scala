@@ -96,23 +96,20 @@ object GenerateBashScripts {
       |# Submit Application on Spark
       |#
       |
-      |ASSEMBLY=target/scala-2.10/simplemap-spark-scala-assembly-1.0.jar
-      |if [ -f "$$ASSEMBLY" ]; then
-      |
+      |for ASSEMBLY in $$(find . -type f -name simplemap-spark-scala-assembly*.jar)
+      |do
       |   echo "Running: "$$SPARK_HOME/bin/spark-submit \\
       |      --master $$SPARK_MASTER_URI $$ASSEMBLY \\
-      |      --blocks $blocks --block_size $blockSize --nodes $nodes \\
+      |      --generate --blocks $blocks --block_size $blockSize --nodes $nodes \\
       |      --nparts $nparts --cores $cores \\
-      |      --json $$LOG_JSON --xml $$LOG_XML >> $$JOB_LOG
+      |      --json $$JOB_JSON --xml $$JOB_XML >> $$JOB_LOG
       |
       |   $$SPARK_HOME/bin/spark-submit \\
       |      --master $$SPARK_MASTER_URI $$ASSEMBLY \\
-      |      --blocks $blocks --block_size $blockSize --nodes $nodes \\
+      |      --generate --blocks $blocks --block_size $blockSize --nodes $nodes \\
       |      --nparts $nparts --cores $cores \\
-      |      --json $$LOG_JSON --xml $$LOG_XML >> $$JOB_LOG
-      |else
-      |   echo "Could not find Scala target assembly. No experiments run." >> $$JOB_LOG
-      |fi
+      |      --json $$JOB_JSON --xml $$JOB_XML >> $$JOB_LOG
+      |done
       |
       |#
       |# Done Submitting Application on Spark
