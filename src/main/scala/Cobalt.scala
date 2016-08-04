@@ -39,7 +39,7 @@ object GenerateBashScripts {
 
   // generate shell scripts to run Spark experiments
   def generate(): Iterator[Script] = {
-    val scriptBaseDir = new File(".", "scripts")
+    val scriptBaseDir = new File(".", "qscripts.d")
     for {
       nodes <- List(1, 4, 8, 16, 32, 64, 120).iterator
       nparts <- List(nodes * cores)
