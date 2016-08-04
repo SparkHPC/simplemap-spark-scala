@@ -18,8 +18,14 @@ import org.json4s.JsonDSL._
 
 object SimpleMap {
 
+  case class Experiment(name: String) {
+    def toXML(): xml.Elem = <experiment id={ name }/>
+    def toJSON(): org.json4s.JsonAST.JObject = ("experiment" -> ("id" -> name))
+  }
+
   def main(args: Array[String]) {
     val config = parseCommandLine(args).getOrElse(Config())
+    val experiment = Experiment("simplemap-spark-scala")
     val sc = new SparkContext()
 
     val (mapTime, a) = nanoTime {
@@ -40,22 +46,22 @@ object SimpleMap {
 
     val report = Report(mapTime, shiftTime)
     if (config.jsonFilename.isDefined)
-      writeJsonReport(config, report)
+      writeJsonReport(experiment, config, report)
     if (config.xmlFilename.isDefined)
-      writeXmlReport(config, report)
+      writeXmlReport(experiment, config, report)
   }
 
-  def writeJsonReport(config: Config, data: Report): Unit = {
-    val results = "results" -> (config.toJSON ~ data.toJSON)
+  def writeJsonReport(exp: Experiment, config: Config, data: Report): Unit = {
+    val results = "results" -> (exp.toJSON ~ config.toJSON ~ data.toJSON)
     val file = new File(config.jsonFilename.get)
     val bw = new BufferedWriter(new FileWriter(file))
     bw.write(pretty(results))
     bw.close()
   }
 
-  def writeXmlReport(config: Config, data: Report): Unit = {
+  def writeXmlReport(exp: Experiment, config: Config, data: Report): Unit = {
     val results = <results>
-                    { config.toXML }{ data.toXML }
+                    { exp.toXML }{ config.toXML }{ data.toXML }
                   </results>
     val pprinter = new scala.xml.PrettyPrinter(80, 2) // scalastyle:ignore
     val file = new File(config.xmlFilename.get)
