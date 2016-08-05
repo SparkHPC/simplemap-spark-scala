@@ -1,9 +1,10 @@
 Overview
 -----------
 
-SimpleMap is one of the benchmark programs developed by Cameron Christensen at https://github.com/cchriste/dataflow.
+SimpleMap is one of the benchmark programs developed by Cameron Christensen at
+https://github.com/cchriste/dataflow. This builds on work being done by Cameron Christensen, George K. Thiruvathukal, and Venkat Vishwanath to evaluate various data flows on supercomputers.
 
-This is a 100% Scala version by George K. Thiruvathukal (with a few additions).
+This version is a 100% Scala version by George K. Thiruvathukal (with a few additions).
 
 We use the Breeze Linear Algebra DenseVector (at the moment) to give a comparable experience to NumPy.
 
