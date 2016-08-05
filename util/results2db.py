@@ -20,7 +20,9 @@ class Results(object):
       self.report = self.results['report']
 
    def job_id(self):
-      return self.filename.split('.')[0]
+      path_info = os.path.split(self.filename)
+      (basename, ext) = os.path.splitext(path_info[1])
+      return basename
 
    def experiment_id(self):
       return self.experiment.get('id', '')
