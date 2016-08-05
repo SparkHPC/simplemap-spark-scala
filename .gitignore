@@ -37,3 +37,5 @@ generated/
 # generated output
 *.csv
 
+# databases
+*.db
