@@ -160,7 +160,8 @@ parameter).
 For example, to see the results for all experiments run on 16 nodes:
 
 ```
-$ sqlite3 -csv simplemap-spark-scala.db 'select * from results where nodes = 16;'
+$ sqlite3 -header -csv simplemap-spark-scala.db 'select * from results where nodes = 16;'
+id,experiment_id,generate,nodes,cores,nparts,blocks,block_size,map_time,shift_time,job_id,src,dst
 33,simplemap-spark-scala,1,16,12,192,1000,1000,273080253.0,225905341.0,883982,"",""
 34,simplemap-spark-scala,1,16,12,192,1000,100,208410205.0,229238769.0,883983,"",""
 35,simplemap-spark-scala,1,16,12,192,1000,10,216620976.0,238596571.0,883984,"",""
@@ -172,6 +173,8 @@ $ sqlite3 -csv simplemap-spark-scala.db 'select * from results where nodes = 16;
 Or perhaps you want to see all situations where we ran with blocks = 1000 and block\_size = 1000:
 
 ```
+sqlite3 -header -csv simplemap-spark-scala.db 'select * from results where blocks = 1000 and block_size = 1000;'
+id,experiment_id,generate,nodes,cores,nparts,blocks,block_size,map_time,shift_time,job_id,src,dst
 0,simplemap-spark-scala,1,1,12,12,1000,1000,204754300.0,226270579.0,883941,"",""
 6,simplemap-spark-scala,1,1,12,12,1000,1000,205997693.0,232052270.0,883949,"",""
 12,simplemap-spark-scala,1,4,12,48,1000,1000,207997276.0,233139221.0,883955,"",""
