@@ -171,6 +171,7 @@ $ sqlite3 -csv simplemap-spark-scala.db 'select * from results where nodes = 16;
 
 Or perhaps you want to see all situations where we ran with blocks = 1000 and block\_size = 1000:
 
+```
 0,simplemap-spark-scala,1,1,12,12,1000,1000,204754300.0,226270579.0,883941,"",""
 6,simplemap-spark-scala,1,1,12,12,1000,1000,205997693.0,232052270.0,883949,"",""
 12,simplemap-spark-scala,1,4,12,48,1000,1000,207997276.0,233139221.0,883955,"",""
@@ -178,6 +179,7 @@ Or perhaps you want to see all situations where we ran with blocks = 1000 and bl
 24,simplemap-spark-scala,1,8,12,96,1000,1000,209286166.0,232733133.0,883969,"",""
 27,simplemap-spark-scala,1,8,12,96,1000,1000,209864819.0,230894542.0,883976,"",""
 33,simplemap-spark-scala,1,16,12,192,1000,1000,273080253.0,225905341.0,883982,"",""
+```
 
 
 We can then use this CSV in our favorite spreadsheet program or gnuplot. I'm not done running all
