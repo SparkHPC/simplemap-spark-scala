@@ -23,7 +23,7 @@ object SimpleMap {
 
   type BigMatrixXYZ = Array[DenseMatrix[Double]]
 
-  val MAX_DENSE_MATRIX_ROWS = Int.MaxValue / 4
+  val MB_OF_FLOATS = 1024 * 1024 / 24
 
   case class Experiment(name: String) {
     def toXML(): xml.Elem = <experiment id={ name }/>
@@ -101,8 +101,8 @@ object SimpleMap {
         c.copy(blocks = x)
       } text ("b/blocks is a int property")
       opt[Int]('s', "block_size") action { (x, c) =>
-        c.copy(blockSize = math.min(x, MAX_DENSE_MATRIX_ROWS))
-      } text (s"s/blockSize is an int property (default and max allowed = $MAX_DENSE_MATRIX_ROWS")
+        c.copy(blockSize = x)
+      } text (s"s/blockSize is an int property (number of Megabytes (MB)")
       opt[Int]('n', "nodes") action { (x, c) =>
         c.copy(nodes = x)
       } text ("n/nodes is an int property")
@@ -158,21 +158,22 @@ object SimpleMap {
   def rddFromGenerate(sc: SparkContext, config: Config): RDD[BigMatrixXYZ] = {
     val rdd = sc.parallelize(0 to config.blocks, config.nodes * config.cores * config.nparts)
     //val gen_block_count = (config.blockSize * 1E6 / 24).toInt // 24 bytes per vector
-    rdd.map(item => generate3(item, config.blocks, config.blockSize))
+    rdd.map(item => generate(item, config.blockSize))
   }
 
-  def generate3(id: Int, blocks: Int, blockSize: Int): BigMatrixXYZ = {
-    Array.fill(blocks)(generate(id, blockSize))
+  // This is the RDD lambda
+  def generate(id: Int, blockSize: Int): BigMatrixXYZ = {
+    // Owing to Java array size limitation, we'll multiply array size by using an outer Array
+    // to hold each block (as an inner DenseMatrix)
+    Array.fill(blockSize)(generateBlock(id, MB_OF_FLOATS))
   }
 
-  def generate(id: Int, blockSize: Int): DenseMatrix[Double] = {
+  // This is not
+  def generateBlock(id: Int, blockSize: Int): DenseMatrix[Double] = {
     val seed = System.nanoTime() / (id + 1)
-    //np.random.seed(seed)
-    //print(s"($id) generating $blockSize vectors...")
     val a = -1000
     val b = 1000
     val r = new scala.util.Random(seed)
-    //val arr = Array.fill(blockCount, 3)(a + (b - a) * r.nextDouble)
     DenseMatrix.fill(blockSize, 3)(a + (b - a) * r.nextDouble)
   }
 
@@ -214,7 +215,7 @@ object SimpleMap {
       cores: Int = 12,
       generate: Boolean = false,
       blocks: Int = 1,
-      blockSize: Int = MAX_DENSE_MATRIX_ROWS, // 1GB contiguous matrices are used and multiplied using blocks.
+      blockSize: Int = 1, // 1 MB
       nparts: Int = 1,
       size: Int = 1,
       nodes: Int = 1,
@@ -229,7 +230,7 @@ object SimpleMap {
         <property key="cores" value={ cores.toString }/>
         <property key="generate" value={ generate.toString }/>
         <property key="blocks" value={ blocks.toString }/>
-        <property key="blockSize" value={ blockSize.toString }/>
+        <property key="blockSize" value={ blockSize.toString } unit="MB"/>
         <property key="nparts" value={ nparts.toString }/>
         <property key="size" value={ size.toString }/>
         <property key="nodes" value={ nodes.toString }/>
@@ -241,6 +242,7 @@ object SimpleMap {
     def toJSON(): org.json4s.JsonAST.JObject = {
       val properties = ("src" -> src.getOrElse("")) ~ ("dst" -> dst.getOrElse("")) ~ ("cores" -> cores.toString) ~
         ("generate" -> generate.toString) ~ ("blocks" -> blocks.toString) ~ ("blockSize" -> blockSize.toString) ~
+        ("blockSizeUnit" -> "MB") ~
         ("nparts" -> nparts.toString) ~ ("size" -> size.toString) ~ ("nodes" -> nodes.toString) ~
         ("jsonFilename" -> jsonFilename.getOrElse("")) ~ ("xmlFilename" -> xmlFilename.getOrElse(""))
       ("config" -> properties)
