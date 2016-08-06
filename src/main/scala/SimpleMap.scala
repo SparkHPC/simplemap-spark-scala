@@ -18,6 +18,14 @@ import org.json4s.JsonDSL._
 
 object SimpleMap {
 
+  // Owing to Java's (and Scala's 32-bit array allocation limitation we break up the outer dimension of the
+  // array into sub arrays. This is ok, because our benchmark has blocks and blockSize as parameters. We use a
+  // default blockSize of Int.MaxValue / 16 to allow for 1GB chunks to be allocated.
+
+  type BigMatrixXYZ = Array[DenseMatrix[Double]]
+
+  val MAX_DENSE_MATRIX_ROWS = (Int.MaxValue / 16) / 3
+
   case class Experiment(name: String) {
     def toXML(): xml.Elem = <experiment id={ name }/>
     def toJSON(): org.json4s.JsonAST.JObject = ("experiment" -> ("id" -> name))
@@ -94,8 +102,8 @@ object SimpleMap {
         c.copy(blocks = x)
       } text ("b/blocks is a int property")
       opt[Int]('s', "block_size") action { (x, c) =>
-        c.copy(blockSize = x)
-      } text ("s/blockSize is an int property")
+        c.copy(blockSize = math.min(x, MAX_DENSE_MATRIX_ROWS))
+      } text (s"s/blockSize is an int property (default and max allowed = $MAX_DENSE_MATRIX_ROWS")
       opt[Int]('n', "nodes") action { (x, c) =>
         c.copy(nodes = x)
       } text ("n/nodes is an int property")
@@ -123,17 +131,19 @@ object SimpleMap {
     } getOrElse (false)
   }
 
-  def rddFromBinaryFile(sc: SparkContext, config: Config): RDD[DenseMatrix[Double]] = {
+  def rddFromBinaryFile(sc: SparkContext, config: Config): RDD[BigMatrixXYZ] = {
     val rdd = sc.binaryFiles(config.src.get)
     rdd.map(binFileInfo => parseVectors(binFileInfo))
   }
 
-  def parseVectors(binFileInfo: (String, PortableDataStream)): DenseMatrix[Double] = {
+  def parseVectors(binFileInfo: (String, PortableDataStream)): BigMatrixXYZ = {
     val (path, bin) = binFileInfo
     val dis = bin.open()
     val iter = Iterator.continually(nextDoubleFromStream(dis))
     val scalaArray = iter.takeWhile(_.isDefined).map(_.get).toArray
-    new DenseMatrix(scalaArray.length / 3, 3, scalaArray)
+    val dm = new DenseMatrix(scalaArray.length / 3, 3, scalaArray)
+    Array(dm)
+    // TODO: Need to fix read logic to allow for extremely large file-based arrays.
   }
 
   def nextDoubleFromStream(dis: DataInputStream): Option[Double] = {
@@ -142,40 +152,45 @@ object SimpleMap {
     }.toOption
   }
 
-  def rddNOP(sc: SparkContext, config: Config): RDD[DenseMatrix[Double]] = {
+  def rddNOP(sc: SparkContext, config: Config): RDD[BigMatrixXYZ] = {
     rddFromGenerate(sc, Config())
   }
 
-  def rddFromGenerate(sc: SparkContext, config: Config): RDD[DenseMatrix[Double]] = {
+  def rddFromGenerate(sc: SparkContext, config: Config): RDD[BigMatrixXYZ] = {
     val rdd = sc.parallelize(0 to config.blocks, config.nodes * config.cores * config.nparts)
-    val gen_block_count = (config.blockSize * 1E6 / 24).toInt // 24 bytes per vector
-    rdd.map(item => generate(item, gen_block_count))
+    //val gen_block_count = (config.blockSize * 1E6 / 24).toInt // 24 bytes per vector
+    rdd.map(item => generate3(item, config.blocks, config.blockSize))
   }
 
-  def generate(id: Int, blockCount: Int): DenseMatrix[Double] = {
+  def generate3(id: Int, blocks: Int, blockSize: Int): BigMatrixXYZ = {
+    Array.fill(blocks)(generate(id, blockSize))
+  }
+
+  def generate(id: Int, blockSize: Int): DenseMatrix[Double] = {
     val seed = System.nanoTime() / (id + 1)
     //np.random.seed(seed)
-    print(s"($id) generating $blockCount vectors...")
+    //print(s"($id) generating $blockSize vectors...")
     val a = -1000
     val b = 1000
     val r = new scala.util.Random(seed)
     //val arr = Array.fill(blockCount, 3)(a + (b - a) * r.nextDouble)
-    DenseMatrix.fill(blockCount, 3)(a + (b - a) * r.nextDouble)
+    DenseMatrix.fill(blockSize, 3)(a + (b - a) * r.nextDouble)
   }
 
-  def doShift(a: RDD[DenseMatrix[Double]]): RDD[DenseMatrix[Double]] = {
+  def doShift(a: RDD[BigMatrixXYZ]): RDD[BigMatrixXYZ] = {
     val shift = DenseVector(25.25, -12.125, 6.333)
     a.map(x => add_xyz_vector(x, shift))
   }
 
-  def add_xyz_vector(vector: DenseMatrix[Double], shift: DenseVector[Double]): DenseMatrix[Double] = {
+  def add_xyz_vector(array: BigMatrixXYZ, shift: DenseVector[Double]): BigMatrixXYZ = {
     require {
-      vector.cols == shift.length
+      array.length > 0 && array(0).cols == shift.length
     }
-    for (i <- 0 until vector.rows) {
-      vector(i, ::) :+= Transpose(shift)
+    for (outer <- 0 until array.length) {
+      for (inner <- 0 until array(outer).rows)
+        array(outer)(inner, ::) :+= Transpose(shift)
     }
-    vector
+    array
   }
 
   case class Report(mapTime: Double, shiftTime: Double) {
@@ -199,8 +214,8 @@ object SimpleMap {
       dst: Option[String] = None,
       cores: Int = 12,
       generate: Boolean = false,
-      blocks: Int = 0,
-      blockSize: Int = 0,
+      blocks: Int = 1,
+      blockSize: Int = MAX_DENSE_MATRIX_ROWS, // 1GB contiguous matrices are used and multiplied using blocks.
       nparts: Int = 1,
       size: Int = 1,
       nodes: Int = 1,
