@@ -1,7 +1,10 @@
 /*
- * SimpleMap: benchmark that shows how to work with binary data files and perform an inplace vector
- * shift. This uses Breeze DenseVector and stays in vector as long as possible until a DenseMatrix is
- * actually needed.
+ * SimpleMap: Large array tests with RDDs using Breeze DenseMatrix[Double] 
+ * for the block representation of array of (x, y, z) data. We use Array
+ * of DenseMatrix[Double] to scale up the data size, since Java arrays (and
+ * Scala by association) are presently limited to 32-bit size.
+ *
+ * Use --blocks parameter to multiply --block_size to get bigger arrays!
  */
 
 package edu.luc.cs
@@ -18,13 +21,9 @@ import org.json4s.JsonDSL._
 
 object SimpleMap {
 
-  // Owing to Java's (and Scala's 32-bit array allocation limitation we break up the outer dimension of the
-  // array into sub arrays. This is ok, because our benchmark has blocks and blockSize as parameters. We use a
-  // default blockSize of Int.MaxValue / 16 to allow for 1GB chunks to be allocated.
-
   type BigMatrixXYZ = Array[DenseMatrix[Double]]
 
-  val MAX_DENSE_MATRIX_ROWS = (Int.MaxValue / 16) / 3
+  val MAX_DENSE_MATRIX_ROWS = Int.MaxValue / 4
 
   case class Experiment(name: String) {
     def toXML(): xml.Elem = <experiment id={ name }/>
