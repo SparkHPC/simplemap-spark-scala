@@ -103,10 +103,10 @@ def write_results_db():
       if file.endswith('.json'):
          path = os.path.join(dir, file)
          r = Results(path)
-         results.append( (id.next(), r.experiment_id(), r.config_generate(), r.config_nodes(),
+         record = (id.next(), r.experiment_id(), r.config_generate(), r.config_nodes(),
                           r.config_cores(), r.config_nparts(), r.config_blocks(), r.config_block_size(),
-                          r.report_map_time(), r.report_shift_time(), r.job_id(), r.config_src(), r.config_dst()))
-
+                          r.report_map_time(), r.report_shift_time(), r.job_id(), r.config_src(), r.config_dst())
+         results.append(record)
 
    cursor.executemany(INSERT_RESULT, results)
    conn.commit()
