@@ -36,19 +36,30 @@ object SimpleMap {
     val sc = new SparkContext()
 
     val (mapTime, a) = nanoTime {
-      if (config.generate) {
+      val rdd = if (config.generate) {
+        println("generated option")
         rddFromGenerate(sc, config)
       } else if (config.src.isDefined) {
+        println("I/O option")
         createResultsDir(config.dst.getOrElse("."), "/results")
         rddFromBinaryFile(sc, config)
       } else {
+        println("No option")
         sc.stop
         rddNOP(sc, config)
       }
+      val count = rdd.count() // force RDD eval
+      println(s"RDD count $count")
+      rdd.persist()
+      rdd
     }
 
     val (shiftTime, b) = nanoTime {
-      doShift(a)
+      val shiftResult = doShift(a)
+      val count = shiftResult.count() // force RDD eval
+      println(s"RDD count after shift $count")
+      shiftResult.persist()
+      shiftResult
     }
 
     val report = Report(mapTime, shiftTime)
@@ -165,7 +176,11 @@ object SimpleMap {
   def generate(id: Int, blockSize: Int): BigMatrixXYZ = {
     // Owing to Java array size limitation, we'll multiply array size by using an outer Array
     // to hold each block (as an inner DenseMatrix)
-    Array.fill(blockSize)(generateBlock(id, MB_OF_FLOATS))
+    val (deltat, array) = nanoTime {
+      Array.fill(blockSize)(generateBlock(id, MB_OF_FLOATS))
+    }
+    println(s"Array of $blockSize MB, time = $deltat")
+    array
   }
 
   // This is not
