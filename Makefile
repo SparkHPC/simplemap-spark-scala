@@ -19,7 +19,7 @@ sbt_clean:
 fs_clean:
 	rm -f ~/logs/*
 	find . -type d -name target -print | xargs rm -rf
-	rm -rf scripts/
+	rm -rf qscripts.d/
 
 clean:
 	make cobalt_clean
