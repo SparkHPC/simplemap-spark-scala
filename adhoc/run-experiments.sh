@@ -18,7 +18,7 @@ for nodes in $@; do
      else
         dependencies="--dependencies $jobid"
      fi
-     echo qsub -n $nodes -t 00:15:00 -A $allocation -q $net $dependencies $script
-     jobid=$(qsub -n $nodes -t 00:15:00 -A $allocation -q $net $dependencies $script)
+     echo qsub -n $nodes -t 00:30:00 -A $allocation -q $net $dependencies $script
+     jobid=$(qsub -n $nodes -t 00:30:00 -A $allocation -q $net $dependencies $script)
   done
 done
