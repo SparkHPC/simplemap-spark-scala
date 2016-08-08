@@ -41,7 +41,7 @@ object GenerateBashScripts {
   def generate(): Iterator[Script] = {
     val scriptBaseDir = new File(".", "qscripts.d")
     for {
-      nodes <- List(1, 4, 16, 32, 64).iterator
+      nodes <- List(1, 4, 16, 32, 64, 120).iterator
       nparts <- List(10) // gets multiplied by cores (12); be careful!
       blocks <- List(nodes, 2 * nodes, 10 * nodes)
       blockSize <- List(1024, 4096, 8192, 16384) // 1 GB to 16 GB
