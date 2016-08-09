@@ -197,15 +197,15 @@ object SimpleMap {
     a.map(x => add_xyz_vector(x, shift))
   }
 
-  def add_xyz_vector(array: BigMatrixXYZ, shift: DenseVector[Double]): BigMatrixXYZ = {
+  def add_xyz_vector(data: BigMatrixXYZ, shift: DenseVector[Double]): BigMatrixXYZ = {
     require {
-      array.length > 0 && array(0).cols == shift.length
+      data.length > 0 && data(0).cols == shift.length
     }
-    for (outer <- 0 until array.length) {
-      for (inner <- 0 until array(outer).rows)
-        array(outer)(inner, ::) :+= Transpose(shift)
+    data foreach { matrix =>
+      for (i <- 0 until matrix.rows)
+        matrix(i, ::) :+= Transpose(shift)
     }
-    array
+    data
   }
 
   case class Report(mapTime: Double, shiftTime: Double) {
