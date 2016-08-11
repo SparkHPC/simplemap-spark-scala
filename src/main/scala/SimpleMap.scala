@@ -62,7 +62,13 @@ object SimpleMap {
       shiftResult
     }
 
-    val report = Report(mapTime, shiftTime)
+    val (avgTime, c) = nanoTime {
+      val c = doAverage(b)
+      val avgs = c.reduce(_ + _)
+      println(s"avg(x)=${avgs(0)} avg(y)=${avgs(1)} avg(z)=${avgs(2)}")
+    }
+
+    val report = Report(mapTime, shiftTime, avgTime)
     if (config.jsonFilename.isDefined)
       writeJsonReport(experiment, config, report)
     if (config.xmlFilename.isDefined)
@@ -194,10 +200,25 @@ object SimpleMap {
 
   def doShift(a: RDD[BigMatrixXYZ]): RDD[BigMatrixXYZ] = {
     val shift = DenseVector(25.25, -12.125, 6.333)
-    a.map(x => add_xyz_vector(x, shift))
+    a.map(x => addVectorDisplacement(x, shift))
   }
 
-  def add_xyz_vector(data: BigMatrixXYZ, shift: DenseVector[Double]): BigMatrixXYZ = {
+  def doAverage(a: RDD[BigMatrixXYZ]): RDD[DenseVector[Double]] = {
+    a.map(x => averageOfVectors(x))
+  }
+
+  def averageOfVectors(data: BigMatrixXYZ): DenseVector[Double] = {
+    // computes sum of each column (x, y, and z)
+    // dividing by a dense vector gives avg(x), avg(y), avg(z)
+    // we'll then reduce this to get the global average across partitions
+    val partialAverageIter = data map { matrix =>
+      sum(matrix(::, *)).t / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
+    }
+    partialAverageIter.reduce(_ + _)
+    // / DenseVector.fill(partialAverages.length)(data(0).rows.toDouble)
+  }
+
+  def addVectorDisplacement(data: BigMatrixXYZ, shift: DenseVector[Double]): BigMatrixXYZ = {
     require {
       data.length > 0 && data(0).cols == shift.length
     }
@@ -208,16 +229,17 @@ object SimpleMap {
     data
   }
 
-  case class Report(mapTime: Double, shiftTime: Double) {
+  case class Report(mapTime: Double, shiftTime: Double, avgTime: Double) {
     def toXML(): xml.Node = {
       <report>
         <time id="mapTime" t={ mapTime.toString } unit="ns"/>
         <time id="shiftTime" t={ shiftTime.toString } unit="ns"/>
+        <time id="avgTime" t={ avgTime.toString } unit="ns"/>
       </report>
     }
 
     def toJSON(): org.json4s.JsonAST.JObject = {
-      val timeData = ("mapTime" -> mapTime.toString) ~ ("shiftTime" -> shiftTime.toString)
+      val timeData = ("mapTime" -> mapTime.toString) ~ ("shiftTime" -> shiftTime.toString) ~ ("avgTime" -> avgTime.toString)
       ("report" -> timeData)
     }
   }
