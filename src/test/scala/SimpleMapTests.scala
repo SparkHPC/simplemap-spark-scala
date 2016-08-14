@@ -58,7 +58,7 @@ class SimpleMapCoreTests extends FlatSpec with Matchers {
   }
 
   // TODO: Might rework this using ScalaCheck (if worth it)
-  
+
   "RandomDoubles" should "generate distribution of doubles across range" in {
     val gen = RandomDoubles(0, -3, 3)
     val data = Array.fill(10000)(gen.next)

@@ -25,11 +25,6 @@ object SimpleMap {
 
   val MB_OF_FLOATS = 1024 * 1024 / 24
 
-  case class Experiment(name: String) {
-    def toXML(): xml.Elem = <experiment id={ name }/>
-    def toJSON(): org.json4s.JsonAST.JObject = ("experiment" -> ("id" -> name))
-  }
-
   def main(args: Array[String]) {
     val config = parseCommandLine(args).getOrElse(Config())
     val experiment = Experiment("simplemap-spark-scala")
@@ -189,13 +184,6 @@ object SimpleMap {
     array
   }
 
-  case class RandomDoubles(id: Int, low: Double, high: Double) {
-    val seed = System.nanoTime() / (id + 1)
-    val generator = new scala.util.Random(seed)
-
-    def next(): Double = low + (high - low) * generator.nextDouble()
-  }
-
   // This is not
   def generateBlock(id: Int, blockSize: Int): DenseMatrix[Double] = {
     val randomDoubleGenerator = RandomDoubles(id, -1000, 1000)
@@ -231,6 +219,18 @@ object SimpleMap {
         matrix(i, ::) :+= Transpose(shift)
     }
     data
+  }
+
+  case class Experiment(name: String) {
+    def toXML(): xml.Elem = <experiment id={ name }/>
+    def toJSON(): org.json4s.JsonAST.JObject = ("experiment" -> ("id" -> name))
+  }
+
+  case class RandomDoubles(id: Int, low: Double, high: Double) {
+    val seed = System.nanoTime() / (id + 1)
+    val generator = new scala.util.Random(seed)
+
+    def next(): Double = low + (high - low) * generator.nextDouble()
   }
 
   case class Report(mapTime: Double, shiftTime: Double, avgTime: Double) {
