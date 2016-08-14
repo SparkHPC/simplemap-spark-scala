@@ -6,7 +6,7 @@ scalaVersion := "2.10.6"
 
 scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked")
 
-mainClass in assembly := Some("edu.luc.cs.SimpleMap")
+mainClass in assembly := Some("dataflows.spark.SimpleMap")
 
 resolvers ++= Seq(
   "gkthiruvathukal@bintray" at "http://dl.bintray.com/gkthiruvathukal/maven",
