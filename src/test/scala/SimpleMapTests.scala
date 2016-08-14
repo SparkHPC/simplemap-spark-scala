@@ -21,6 +21,13 @@ class SampleRDD extends FunSuite with SharedSparkContext {
 
 class SimpleMapCoreTests extends FlatSpec with Matchers {
 
+  "Floating point tests" should "support tolerance of..." in {
+    val x = 3.0
+    val y = 2.0
+
+    x / y should be(1.5 +- 0.0001)
+  }
+
   "Breeze Basics" should "work as expected" in {
     val a = Array(1.0, 2.0, 3.0)
     val dv = DenseVector(a)
@@ -48,5 +55,15 @@ class SimpleMapCoreTests extends FlatSpec with Matchers {
     config.xmlFilename.get should be("output.xml")
     config.src should be(None)
     config.dst should be(None)
+  }
+
+  // TODO: Might rework this using ScalaCheck (if worth it)
+  
+  "RandomDoubles" should "generate distribution of doubles across range" in {
+    val gen = RandomDoubles(0, -3, 3)
+    val data = Array.fill(10000)(gen.next)
+    for (bucket <- -2 to 2) {
+      data map { item => item.toInt } count (value => value == bucket) should be > 0
+    }
   }
 }

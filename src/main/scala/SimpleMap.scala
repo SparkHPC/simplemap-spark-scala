@@ -189,13 +189,17 @@ object SimpleMap {
     array
   }
 
+  case class RandomDoubles(id: Int, low: Double, high: Double) {
+    val seed = System.nanoTime() / (id + 1)
+    val generator = new scala.util.Random(seed)
+
+    def next(): Double = low + (high - low) * generator.nextDouble()
+  }
+
   // This is not
   def generateBlock(id: Int, blockSize: Int): DenseMatrix[Double] = {
-    val seed = System.nanoTime() / (id + 1)
-    val a = -1000
-    val b = 1000
-    val r = new scala.util.Random(seed)
-    DenseMatrix.fill(blockSize, 3)(a + (b - a) * r.nextDouble)
+    val randomDoubleGenerator = RandomDoubles(id, -1000, 1000)
+    DenseMatrix.fill(blockSize, 3)(randomDoubleGenerator.next)
   }
 
   def doShift(a: RDD[BigMatrixXYZ]): RDD[BigMatrixXYZ] = {
