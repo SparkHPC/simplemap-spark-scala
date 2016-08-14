@@ -7,7 +7,7 @@
  * The scripts start Apache Spark and run the assembly all-in-one.
  */
 
-package edu.luc.cs
+package dataflows.spark
 
 import scala.util.{ Try, Success, Failure }
 import java.io._

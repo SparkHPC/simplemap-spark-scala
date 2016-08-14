@@ -7,7 +7,7 @@
  * Use --blocks parameter to multiply --block_size to get bigger arrays!
  */
 
-package edu.luc.cs
+package dataflows.spark
 
 import org.apache.spark.SparkContext
 import org.apache.spark.input.PortableDataStream
@@ -19,7 +19,7 @@ import breeze.linalg._
 import org.json4s.jackson.JsonMethods._
 import org.json4s.JsonDSL._
 
-object SimpleMap {
+object SparkBenchmarkHPC {
 
   type BigMatrixXYZ = Array[DenseMatrix[Double]]
 

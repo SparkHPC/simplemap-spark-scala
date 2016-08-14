@@ -1,7 +1,7 @@
 import org.scalatest._
 
 import breeze.linalg._
-import edu.luc.cs.SimpleMap._
+import dataflows.spark.SparkBenchmarkHPC._
 
 /*
 
@@ -19,7 +19,7 @@ class SampleRDD extends FunSuite with SharedSparkContext {
 }
 */
 
-class SimpleMapCoreTests extends FlatSpec with Matchers {
+class SparkBechmarkHPCTests extends FlatSpec with Matchers {
 
   "Floating point tests" should "support tolerance of..." in {
     val x = 3.0
