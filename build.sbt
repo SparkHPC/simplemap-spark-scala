@@ -14,7 +14,7 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "edu.luc.cs" %% "blockperf" % "0.4.3",
+  "edu.luc.cs" %% "blockperf" % "0.5.0",
   "com.novocode" % "junit-interface" % "latest.release" % Test,
   "org.apache.spark" %% "spark-core" % "1.4.1" % "provided",
   "com.github.scopt" %% "scopt" % "3.4.0",

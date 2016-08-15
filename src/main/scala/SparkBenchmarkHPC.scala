@@ -6,16 +6,15 @@
  *
  * Use --blocks parameter to multiply --block_size to get bigger arrays!
  */
-
 package dataflows.spark
 
+import blockperf._
 import org.apache.spark.SparkContext
 import org.apache.spark.input.PortableDataStream
 import org.apache.spark.rdd.RDD
 import scala.util.{ Try, Success, Failure }
 import java.io._
 import breeze.linalg._
-
 import org.json4s.jackson.JsonMethods._
 import org.json4s.JsonDSL._
 
@@ -30,7 +29,7 @@ object SparkBenchmarkHPC {
     val experiment = Experiment("simplemap-spark-scala")
     val sc = new SparkContext()
 
-    val (mapTime, a) = nanoTime {
+    val (mapTime, _, a) = performance {
       val rdd = if (config.generate) {
         println("generated option")
         rddFromGenerate(sc, config)
@@ -49,7 +48,7 @@ object SparkBenchmarkHPC {
       rdd
     }
 
-    val (shiftTime, b) = nanoTime {
+    val (shiftTime, _, b) = performance {
       val shiftResult = doShift(a)
       val count = shiftResult.count() // force RDD eval
       println(s"RDD count after shift $count")
@@ -57,13 +56,13 @@ object SparkBenchmarkHPC {
       shiftResult
     }
 
-    val (avgTime, c) = nanoTime {
+    val (avgTime, _, c) = performance {
       val c = doAverage(b)
       val avgs = c.reduce(_ + _)
       println(s"avg(x)=${avgs(0)} avg(y)=${avgs(1)} avg(z)=${avgs(2)}")
     }
 
-    val report = Report(mapTime, shiftTime, avgTime)
+    val report = Report(mapTime.t, shiftTime.t, avgTime.t)
     if (config.jsonFilename.isDefined)
       writeJsonReport(experiment, config, report)
     if (config.xmlFilename.isDefined)
@@ -177,7 +176,7 @@ object SparkBenchmarkHPC {
   def generate(id: Int, blockSize: Int): BigMatrixXYZ = {
     // Owing to Java array size limitation, we'll multiply array size by using an outer Array
     // to hold each block (as an inner DenseMatrix)
-    val (deltat, array) = nanoTime {
+    val (deltat, _, array) = performance {
       Array.fill(blockSize)(generateBlock(id, MB_OF_FLOATS))
     }
     println(s"Array of $blockSize MB, time = $deltat")
