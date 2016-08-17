@@ -41,10 +41,17 @@ object GenerateBashScripts {
   def generate(): Iterator[Script] = {
     val scriptBaseDir = new File(".", "qscripts.d")
     for {
-      nodes <- List(1, 4, 8, 16, 32, 64, 100).iterator
-      nparts <- List(1, 10, 20)
+      // blocks are allocated in 1MB chunks in the benchmark (1GB to 32GB here)
+      blockSize <- List(1, 4, 8, 16, 32).map(gb => gb * 1024).iterator
+
+      // nodes on Cooley (we stop at 100 since it is almost impossible to get 120+)
+      nodes <- List(1, 4, 8, 16, 32, 64, 100)
+
+      // partition multiplier (leave at 1 for now unless you want to spill more data)
+      nparts <- List(1)
+
+      // blocks (this gives us one block per partition when nparts=1)
       blocks <- List(nparts * nodes * cores)
-      blockSize <- List(1024, 4096, 8192, 16384) // 1 GB to 16 GB
     } yield {
       val scriptDir = new File(scriptBaseDir, s"$nodes")
       val filename = s"do-simplemap-${nodes}nodes-${nparts}parts-${blocks}blocks-${blockSize}MB.sh"
