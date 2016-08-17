@@ -33,6 +33,9 @@ class Results(object):
    def report_shift_time(self):
       return float(self.report.get('shiftTime', 0))
 
+   def report_avg_time(self):
+      return float(self.report.get('avgTime', 0))
+
    def config_src(self):
       return self.config.get('src', 0)
 
@@ -77,12 +80,13 @@ CREATE_RESULTS_TABLE="""CREATE TABLE results
    block_size integer,
    map_time real,
    shift_time real,
+   avg_time real,
    job_id text,
    src text,
    dst text)
 """
 
-INSERT_RESULT="INSERT INTO results VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+INSERT_RESULT="INSERT INTO results VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
 def next_id():
    id = 0
@@ -105,7 +109,7 @@ def write_results_db():
          r = Results(path)
          record = (id.next(), r.experiment_id(), r.config_generate(), r.config_nodes(),
                           r.config_cores(), r.config_nparts(), r.config_blocks(), r.config_block_size(),
-                          r.report_map_time(), r.report_shift_time(), r.job_id(), r.config_src(), r.config_dst())
+                          r.report_map_time(), r.report_shift_time(), r.report_avg_time(), r.job_id(), r.config_src(), r.config_dst())
          results.append(record)
 
    cursor.executemany(INSERT_RESULT, results)
