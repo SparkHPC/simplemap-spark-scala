@@ -7,7 +7,7 @@ all:
 	sbt assembly
 
 jobs:
-	sbt "run-main edu.luc.cs.GenerateBashScripts"
+	sbt "run-main dataflows.spark.GenerateBashScripts"
 	chmod -R +x qscripts.d/
 
 cobalt_clean:
