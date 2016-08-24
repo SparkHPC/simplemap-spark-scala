@@ -202,11 +202,15 @@ object SparkBenchmarkHPC {
     // computes sum of each column (x, y, and z)
     // dividing by a dense vector gives avg(x), avg(y), avg(z)
     // we'll then reduce this to get the global average across partitions
+
     val partialAverageIter = data map { matrix =>
-      sum(matrix(::, *)).t / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
+      // Breeze 0.12
+      // sum(matrix(::, *)).t / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
+
+      // Breeze 0.11.2 (same as Spark Breeze version)
+      sum(matrix(::, *)).toDenseVector / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
     }
     partialAverageIter.reduce(_ + _)
-    // / DenseVector.fill(partialAverages.length)(data(0).rows.toDouble)
   }
 
   def addVectorDisplacement(data: BigMatrixXYZ, shift: DenseVector[Double]): BigMatrixXYZ = {

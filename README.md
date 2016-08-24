@@ -1,3 +1,8 @@
+Status
+--------
+
+[![Build Status](https://travis-ci.org/gkthiruvathukal/simplemap-spark-scala.svg?branch=master)](https://travis-ci.org/gkthiruvathukal/simplemap-spark-scala)
+
 Overview
 -----------
 
