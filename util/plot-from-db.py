@@ -31,12 +31,11 @@ by_block = {}
 
 # TODO: Need to get a list of known linestyles w/o hard coding them.
 
+# This just generates different line color/shapes for each line being ploted.
+
 def linestyle_gen():
-   while True:
-     yield "bo--"
-     yield "go--"
-     yield "ro--"
-     yield "yo--"
+   for (color, shape) in zip("bgrcmyk"*100, "o^*8s"*100):
+      yield color + shape + "--"
 
 for b in block_sizes:
 	Q3=Q2 % vars()
