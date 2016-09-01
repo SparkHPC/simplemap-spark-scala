@@ -15,16 +15,15 @@ import java.io._
 object GenerateBashScripts {
 
   val cores = 12
-  val scriptBaseDir = new File("./qscripts.d", "results")
+  val scriptBaseDir = new File("qscripts.d")
 
   def main(args: Array[String]) {
-    val scripts = generate()
+    val scripts = large() ++ strong()
     scripts map { script => script.save } filter { _.isDefined } map { _.get } foreach println
   }
 
   // generate shell scripts to run Spark experiments
-  def generate(): Iterator[Script] = {
-    val scriptBaseDir = new File(".", "qscripts.d")
+  def large(): Iterator[Script] = {
     for {
       // blocks are allocated in 1MB chunks in the benchmark (1GB to 32GB here)
       blockSize <- List(1, 4, 8, 16).map(gb => gb * 1024).iterator
@@ -38,12 +37,31 @@ object GenerateBashScripts {
       // blocks (this gives us one block per partition when nparts=1)
       blocks <- List(nparts * nodes * cores)
     } yield {
-      Script(nodes, nparts, blocks, blockSize)
+      Script("large", nodes, nparts, blocks, blockSize)
     }
   }
 
-  case class Script(nodes: Int, nparts: Int, blocks: Int, blockSize: Int) {
-    val dir = new File(scriptBaseDir, s"$nodes")
+  def strong(): Iterator[Script] = {
+    for {
+      // blocks are allocated in 1MB chunks in the benchmark (1GB to 32GB here)
+      blockSize <- List(64).iterator
+
+      // nodes on Cooley (we stop at 100 since it is almost impossible to get 120+)
+      nodes <- List(1, 2, 4, 8, 16)
+
+      // partition multiplier (leave at 1 for now unless you want to spill more data)
+      nparts <- List(1, 4)
+
+      // blocks (this gives us one block per partition when nparts=1)
+      blocks <- 4 to 15 map { math.pow(2, _).toInt }
+    } yield {
+      Script("strong", nodes, nparts, blocks, blockSize)
+    }
+  }
+
+  case class Script(groupName: String, nodes: Int, nparts: Int, blocks: Int, blockSize: Int) {
+    val groupDir = new File(scriptBaseDir, groupName)
+    val dir = new File(groupDir, s"$nodes")
     val filename = s"do-simplemap-${nodes}nodes-${nparts}parts-${blocks}blocks-${blockSize}MB.sh"
 
     val scriptHeader = s"""#!/bin/bash
@@ -60,7 +78,7 @@ object GenerateBashScripts {
 
     val startSpark = s"""
       |#
-      |# Start Apache Spark
+      |# Start Apache Spark Cluster
       |#
       |
       |JOB_LOG=$$HOME/logs/$$COBALT_JOBID.txt
@@ -116,7 +134,9 @@ object GenerateBashScripts {
     val body = scriptHeader + startSpark + submitSparkJob
 
     def save(): Option[String] = {
-      Try { dir.mkdirs }
+      Try {
+        dir.mkdirs
+      }
       if (dir.exists) {
         val file = new File(dir, filename)
         val bw = new BufferedWriter(new FileWriter(file))
