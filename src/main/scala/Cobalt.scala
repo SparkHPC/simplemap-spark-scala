@@ -47,7 +47,7 @@ object GenerateBashScripts {
       blockSize <- List(64).iterator
 
       // nodes on Cooley (we stop at 100 since it is almost impossible to get 120+)
-      nodes <- List(1, 2, 4, 8, 16)
+      nodes <- List(1, 2, 4, 8, 16, 32)
 
       // partition multiplier (leave at 1 for now unless you want to spill more data)
       nparts <- List(1, 4)

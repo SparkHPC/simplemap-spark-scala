@@ -23,7 +23,7 @@ if [ "" == "$jobtime" ]; then
 fi
 
 for nodes in $@; do
-  for script in ./qscripts.d/$nodes/*1parts*.sh ; do
+  for script in ./qscripts.d/strong/$nodes/*4parts*.sh ; do
      echo qsub -n $nodes -t $jobtime -A $allocation -q $net $dependencies $script
      jobid=$(qsub -n $nodes -t $jobtime -A $allocation -q $net $dependencies $script)
      dependencies="--dependencies $jobid"
