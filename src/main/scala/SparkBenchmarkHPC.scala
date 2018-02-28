@@ -205,10 +205,10 @@ object SparkBenchmarkHPC {
 
     val partialAverageIter = data map { matrix =>
       // Breeze 0.12
-      // sum(matrix(::, *)).t / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
+      sum(matrix(::, *)).t / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
 
       // Breeze 0.11.2 (same as Spark Breeze version)
-      sum(matrix(::, *)).toDenseVector / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
+      //sum(matrix(::, *)).toDenseVector / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
     }
     partialAverageIter.reduce(_ + _)
   }
