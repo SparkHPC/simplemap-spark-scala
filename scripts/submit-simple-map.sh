@@ -8,7 +8,7 @@
 # qsub info
 
 # allocation time in minutes (int)
-# -m
+# -t
 MINUTES=120
 
 # number of nodes (int)
@@ -57,9 +57,6 @@ WORKING_DIR=~/Work/Cooley_Spark
 APP_DIR=~/Work/simplemap-spark-scala
 ASSEMBLY=$(find "$APP_DIR" -name '*.jar'|head -n1)
 
-REPORT_DIR=$APP_DIR/experiments/$LABEL/simplemap
-mkdir -p $REPORT_DIR
-REPORT_NAME=$REPORT_DIR/simplemap-$NODES-$BLOCKS-$BLOCK_SIZE-$NPARTS-$CORES.json
 
 while getopts ":a:n:t:q:b:s:p:c:l:" opt; do
   case $opt in
@@ -119,17 +116,11 @@ if [ ! -d "$WORKING_DIR" ]; then
   exit 1
 fi
 
+REPORT_DIR=$APP_DIR/experiments/$LABEL/simplemap
+mkdir -p $REPORT_DIR
+REPORT_NAME=$REPORT_DIR/simplemap-$NODES-$BLOCKS-$BLOCK_SIZE-$NPARTS-$CORES.json
+echo "Report will be written to $REPORT_NAME"
 pushd $WORKING_DIR
-
-echo RUNNING ./submit-spark.sh -n $NODES -A $ALLOCATION -t $MINUTES -q $QUEUE \
-  $ASSEMBLY \
-  --generate \
-  --blocks $BLOCKS \
-  --block_size $BLOCK_SIZE \
-  --nodes $NODES \
-  --nparts $NPARTS --cores $CORES \
-  --json $REPORT_NAME
-
 
 ./submit-spark.sh -n $NODES -A $ALLOCATION -t $MINUTES -q $QUEUE \
   $ASSEMBLY \
