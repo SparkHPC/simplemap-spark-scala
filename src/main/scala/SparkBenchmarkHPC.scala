@@ -62,7 +62,7 @@ object SparkBenchmarkHPC {
       println(s"avg(x)=${avgs(0)} avg(y)=${avgs(1)} avg(z)=${avgs(2)}")
     }
 
-    val report = Report(mapTime.t, shiftTime.t, avgTime.t)
+    val report = Report(mapTime.t / 1.0e9, shiftTime.t / 1.0e9, avgTime.t / 1.0e9)
     if (config.jsonFilename.isDefined)
       writeJsonReport(experiment, config, report)
     if (config.xmlFilename.isDefined)
@@ -239,9 +239,9 @@ object SparkBenchmarkHPC {
   case class Report(mapTime: Double, shiftTime: Double, avgTime: Double) {
     def toXML(): xml.Node = {
       <report>
-        <time id="mapTime" t={ mapTime.toString } unit="ns"/>
-        <time id="shiftTime" t={ shiftTime.toString } unit="ns"/>
-        <time id="avgTime" t={ avgTime.toString } unit="ns"/>
+        <time id="mapTime" t={ mapTime.toString } unit="s"/>
+        <time id="shiftTime" t={ shiftTime.toString } unit="s"/>
+        <time id="avgTime" t={ avgTime.toString } unit="s"/>
       </report>
     }
 
