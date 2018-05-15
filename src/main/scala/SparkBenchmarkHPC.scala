@@ -22,7 +22,7 @@ object SparkBenchmarkHPC {
 
   type BigMatrixXYZ = Array[DenseMatrix[Double]]
 
-  val MB_OF_FLOATS = 1024 * 1024 / 24
+  val MEGA_MULTIPLIER = 1024 * 1024
 
   def main(args: Array[String]) {
     val config = parseCommandLine(args).getOrElse(Config())
@@ -113,7 +113,7 @@ object SparkBenchmarkHPC {
       } text ("b/blocks is a int property")
       opt[Int]('s', "block_size") action { (x, c) =>
         c.copy(blockSize = x)
-      } text (s"s/blockSize is an int property (number of Megabytes (MB)")
+      } text (s"s/blockSize is an int property (number of 3D float vectors x $MEGA_MULTIPLIER)")
       opt[Int]('n', "nodes") action { (x, c) =>
         c.copy(nodes = x)
       } text ("n/nodes is an int property")
@@ -177,7 +177,7 @@ object SparkBenchmarkHPC {
     // Owing to Java array size limitation, we'll multiply array size by using an outer Array
     // to hold each block (as an inner DenseMatrix)
     val (deltat, _, array) = performance {
-      Array.fill(blockSize)(generateBlock(id, MB_OF_FLOATS))
+      Array.fill(blockSize)(generateBlock(id, MEGA_MULTIPLIER))
     }
     println(s"Array of $blockSize MB, time = $deltat")
     array
