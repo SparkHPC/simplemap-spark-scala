@@ -38,7 +38,7 @@ class SparkBechmarkHPCTests extends FlatSpec with Matchers {
     val data = generate(1, 3)
     data.length should be(3)
     for (i <- 0 until data.length) {
-      data(i).rows should be(MB_OF_FLOATS)
+      data(i).rows should be(MEGA_MULTIPLIER)
       data(i).cols should be(3)
     }
   }
