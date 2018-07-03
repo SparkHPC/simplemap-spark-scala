@@ -265,8 +265,8 @@ object SparkBenchmarkHPC {
     }
 
     def toJSON(): org.json4s.JsonAST.JObject = {
-      val timeData = ("mapTime" -> mapTime.toString) ~ ("shiftTime" -> shiftTime.toString) ~ ("avgTime" -> avgTime.toString) ~ ("reduceTime" -> reduceTime.toString) ~ ("report" -> timeData)
-      timeData
+      val timeData = ("mapTime" -> mapTime.toString) ~ ("shiftTime" -> shiftTime.toString) ~ ("avgTime" -> avgTime.toString) ~ ("reduceTime" -> reduceTime.toString)
+      ("report" -> timeData)
     }
   }
 
