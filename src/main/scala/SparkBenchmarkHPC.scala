@@ -306,8 +306,8 @@ object SparkBenchmarkHPC {
 
     def toJSON(): org.json4s.JsonAST.JObject = {
       val properties = ("src" -> src.getOrElse("")) ~ ("dst" -> dst.getOrElse("")) ~ ("cores" -> cores.toString) ~
-        ("generate" -> generate.toString) ~ ("lazy" -> lazyEval.toString)
-      ("blocks" -> blocks.toString) ~ ("blockSize" -> blockSize.toString) ~
+        ("generate" -> generate.toString) ~ ("lazy" -> lazyEval.toString) ~
+        ("blocks" -> blocks.toString) ~ ("blockSize" -> blockSize.toString) ~
         ("blockSizeUnit" -> "MB") ~
         ("nparts" -> nparts.toString) ~ ("size" -> size.toString) ~ ("nodes" -> nodes.toString) ~
         ("jsonFilename" -> jsonFilename.getOrElse("")) ~ ("xmlFilename" -> xmlFilename.getOrElse(""))
