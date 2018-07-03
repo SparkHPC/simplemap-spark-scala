@@ -115,7 +115,7 @@ object SparkBenchmarkHPC {
         c.copy(generate = true)
       } text ("g/generate is a Boolean property")
       opt[Unit]('l', "lazy") action { (_, c) =>
-        c.copy(lazyEval = false)
+        c.copy(lazyEval = true)
       } text ("l/lazy is as Boolean property (turn off caching)")
       opt[String]('d', "dst") action { (x, c) =>
         c.copy(dst = Some(x))
@@ -123,7 +123,7 @@ object SparkBenchmarkHPC {
       opt[Int]('b', "blocks") action { (x, c) =>
         c.copy(blocks = x)
       } text ("b/blocks is a int property")
-      opt[Int]('s', "block_size") action { (x, c) =>
+      opt[Int]('k', "block_size") action { (x, c) =>
         c.copy(blockSize = x)
       } text (s"s/blockSize is an int property (number of 3D float vectors x $MEGA_MULTIPLIER)")
       opt[Int]('n', "nodes") action { (x, c) =>
@@ -277,7 +277,7 @@ object SparkBenchmarkHPC {
       dst: Option[String] = None,
       cores: Int = 12,
       generate: Boolean = false,
-      lazyEval: Boolean = true,
+      lazyEval: Boolean = false,
       blocks: Int = 1,
       blockSize: Int = 1, // 1 MB
       nparts: Int = 1,
