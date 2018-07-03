@@ -44,7 +44,8 @@ object SparkBenchmarkHPC {
       }
       val count = rdd.count() // force RDD eval
       println(s"RDD count $count")
-      rdd.persist()
+      if (!config.lazyEval)
+        rdd.persist()
       rdd
     }
 
@@ -52,7 +53,8 @@ object SparkBenchmarkHPC {
       val shiftResult = doShift(a)
       val count = shiftResult.count() // force RDD eval
       println(s"RDD count after shift $count")
-      shiftResult.persist()
+      if (!config.lazyEval)
+        shiftResult.persist()
       shiftResult
     }
 
@@ -105,6 +107,9 @@ object SparkBenchmarkHPC {
       opt[Unit]('g', "generate") action { (_, c) =>
         c.copy(generate = true)
       } text ("g/generate is a Boolean property")
+      opt[Unit]('l', "lazy") action { (_, c) =>
+        c.copy(lazyEval = false)
+      } text ("l/lazy is as Boolean property (turn off caching)")
       opt[String]('d', "dst") action { (x, c) =>
         c.copy(dst = Some(x))
       } text ("d/dst is a String property")
@@ -179,7 +184,8 @@ object SparkBenchmarkHPC {
     val (deltat, _, array) = performance {
       Array.fill(blockSize)(generateBlock(id, MEGA_MULTIPLIER))
     }
-    println(s"Array of $blockSize MB, time = $deltat")
+    val blockCount = blockSize * MEGA_MULTIPLIER
+    println(s"Array of $blockCount float vectors, time = $deltat")
     array
   }
 
@@ -203,14 +209,19 @@ object SparkBenchmarkHPC {
     // dividing by a dense vector gives avg(x), avg(y), avg(z)
     // we'll then reduce this to get the global average across partitions
 
-    val partialAverageIter = data map { matrix =>
-      // Breeze 0.12
-      sum(matrix(::, *)).t / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
+    val (deltat, _, avg) = performance {
+      val partialAverageIter = data map { matrix =>
+        // Breeze 0.12
+        sum(matrix(::, *)).t / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
 
-      // Breeze 0.11.2 (same as Spark Breeze version)
-      //sum(matrix(::, *)).toDenseVector / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
+        // Breeze 0.11.2 (same as Spark Breeze version)
+        //sum(matrix(::, *)).toDenseVector / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
+      }
+      partialAverageIter.reduce(_ + _)
     }
-    partialAverageIter.reduce(_ + _)
+    println(s"averageOfVectors() time = $deltat")
+    avg
+
   }
 
   def addVectorDisplacement(data: BigMatrixXYZ, shift: DenseVector[Double]): BigMatrixXYZ = {
@@ -258,6 +269,7 @@ object SparkBenchmarkHPC {
       dst: Option[String] = None,
       cores: Int = 12,
       generate: Boolean = false,
+      lazyEval: Boolean = true,
       blocks: Int = 1,
       blockSize: Int = 1, // 1 MB
       nparts: Int = 1,
@@ -273,6 +285,7 @@ object SparkBenchmarkHPC {
         <property key="dst" value={ src.getOrElse("") }/>
         <property key="cores" value={ cores.toString }/>
         <property key="generate" value={ generate.toString }/>
+        <property key="lazy" value={ lazyEval.toString }/>
         <property key="blocks" value={ blocks.toString }/>
         <property key="blockSize" value={ blockSize.toString } unit="MB"/>
         <property key="nparts" value={ nparts.toString }/>
@@ -285,7 +298,8 @@ object SparkBenchmarkHPC {
 
     def toJSON(): org.json4s.JsonAST.JObject = {
       val properties = ("src" -> src.getOrElse("")) ~ ("dst" -> dst.getOrElse("")) ~ ("cores" -> cores.toString) ~
-        ("generate" -> generate.toString) ~ ("blocks" -> blocks.toString) ~ ("blockSize" -> blockSize.toString) ~
+        ("generate" -> generate.toString) ~ ("lazy" -> lazyEval.toString)
+      ("blocks" -> blocks.toString) ~ ("blockSize" -> blockSize.toString) ~
         ("blockSizeUnit" -> "MB") ~
         ("nparts" -> nparts.toString) ~ ("size" -> size.toString) ~ ("nodes" -> nodes.toString) ~
         ("jsonFilename" -> jsonFilename.getOrElse("")) ~ ("xmlFilename" -> xmlFilename.getOrElse(""))
