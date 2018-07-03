@@ -60,11 +60,18 @@ object SparkBenchmarkHPC {
 
     val (avgTime, _, c) = performance {
       val c = doAverage(b)
-      val avgs = c.reduce(_ + _)
-      println(s"avg(x)=${avgs(0)} avg(y)=${avgs(1)} avg(z)=${avgs(2)}")
+      if (!config.lazyEval)
+        c.persist()
+      c
     }
 
-    val report = Report(mapTime.t / 1.0e9, shiftTime.t / 1.0e9, avgTime.t / 1.0e9)
+    val (reduceTime, _, avgs) = performance {
+      val avgs = c.reduce(_ + _)
+      println(s"avg(x)=${avgs(0)} avg(y)=${avgs(1)} avg(z)=${avgs(2)}")
+      avgs
+    }
+
+    val report = Report(mapTime.t / 1.0e9, shiftTime.t / 1.0e9, avgTime.t / 1.0e9, reduceTime.t / 1.0e9)
     if (config.jsonFilename.isDefined)
       writeJsonReport(experiment, config, report)
     if (config.xmlFilename.isDefined)
@@ -247,17 +254,18 @@ object SparkBenchmarkHPC {
     def next(): Double = low + (high - low) * generator.nextDouble()
   }
 
-  case class Report(mapTime: Double, shiftTime: Double, avgTime: Double) {
+  case class Report(mapTime: Double, shiftTime: Double, avgTime: Double, reduceTime: Double) {
     def toXML(): xml.Node = {
       <report>
         <time id="mapTime" t={ mapTime.toString } unit="s"/>
         <time id="shiftTime" t={ shiftTime.toString } unit="s"/>
         <time id="avgTime" t={ avgTime.toString } unit="s"/>
+        <time id="reduceTime" t={ reduceTime.toString } unit="s"/>
       </report>
     }
 
     def toJSON(): org.json4s.JsonAST.JObject = {
-      val timeData = ("mapTime" -> mapTime.toString) ~ ("shiftTime" -> shiftTime.toString) ~ ("avgTime" -> avgTime.toString)
+      val timeData = ("mapTime" -> mapTime.toString) ~ ("shiftTime" -> shiftTime.toString) ~ ("avgTime" -> avgTime.toString) ~ ("reduceTime" -> reduceTime.toString)
       ("report" -> timeData)
     }
   }
