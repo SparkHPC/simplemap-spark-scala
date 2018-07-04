@@ -31,6 +31,7 @@ object KernelBenchmark {
       averageOfVectors(shifted)
     }
 
+    printf("rows: %d, cols: %d\n", array.length * array(0).rows, array(0).cols)
     printf("generation: %f\n", generateTime.t / 1e9)
     printf("shift: %f\n", shiftTime.t / 1e9)
     printf("average: %f\n", avgTime.t / 1e9)
