@@ -78,7 +78,8 @@ object SparkBenchmarkHPC {
       "map" -> mapTime.t / 1.0e9,
       "shift" -> shiftTime.t / 1.0e9,
       "average" -> avgTime.t / 1.0e9,
-      "reduce" -> reduceTime.t / 1.0e9
+      "reduce" -> reduceTime.t / 1.0e9,
+      "overall" -> (mapTime.t + shiftTime.t + avgTime.t + reduceTime.t) / 1.0e9
     )
 
     val report = Report(timings)
