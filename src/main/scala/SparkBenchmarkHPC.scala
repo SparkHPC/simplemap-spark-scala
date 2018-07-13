@@ -8,15 +8,18 @@
  */
 package dataflows.spark
 
+import java.io._
+
 import blockperf._
+import breeze.linalg._
 import org.apache.spark.SparkContext
 import org.apache.spark.input.PortableDataStream
 import org.apache.spark.rdd.RDD
-import scala.util.{ Try, Success, Failure }
-import java.io._
-import breeze.linalg._
-import org.json4s.jackson.JsonMethods._
 import org.json4s.JsonDSL._
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
+
+import scala.util.Try
 
 object SparkBenchmarkHPC {
 
@@ -71,7 +74,14 @@ object SparkBenchmarkHPC {
       avgs
     }
 
-    val report = Report(mapTime.t / 1.0e9, shiftTime.t / 1.0e9, avgTime.t / 1.0e9, reduceTime.t / 1.0e9)
+    val timings = Map(
+      "map" -> mapTime.t / 1.0e9,
+      "shift" -> shiftTime.t / 1.0e9,
+      "average" -> avgTime.t / 1.0e9,
+      "reduce" -> reduceTime.t / 1.0e9
+    )
+
+    val report = Report(timings)
     if (config.jsonFilename.isDefined)
       writeJsonReport(experiment, config, report)
     if (config.xmlFilename.isDefined)
@@ -79,7 +89,7 @@ object SparkBenchmarkHPC {
   }
 
   def writeJsonReport(exp: Experiment, config: Config, data: Report): Unit = {
-    val results = "results" -> (exp.toJSON ~ config.toJSON ~ data.toJSON)
+    val results = exp.toJSON ~ config.toJSON ~ data.toJSON
     val file = new File(config.jsonFilename.get)
     val bw = new BufferedWriter(new FileWriter(file))
     bw.write(pretty(results))
@@ -254,19 +264,16 @@ object SparkBenchmarkHPC {
     def next(): Double = low + (high - low) * generator.nextDouble()
   }
 
-  case class Report(mapTime: Double, shiftTime: Double, avgTime: Double, reduceTime: Double) {
+  case class Report(timings: Map[String, Double]) {
     def toXML(): xml.Node = {
-      <report>
-        <time id="mapTime" t={ mapTime.toString } unit="s"/>
-        <time id="shiftTime" t={ shiftTime.toString } unit="s"/>
-        <time id="avgTime" t={ avgTime.toString } unit="s"/>
-        <time id="reduceTime" t={ reduceTime.toString } unit="s"/>
-      </report>
+      <performance>
+        { timings map { case (name, value) => <time id={ name.toString } t={ value.toString } unit="s"/> } }
+      </performance>
     }
 
     def toJSON(): org.json4s.JsonAST.JObject = {
-      val timeData = ("mapTime" -> mapTime.toString) ~ ("shiftTime" -> shiftTime.toString) ~ ("avgTime" -> avgTime.toString) ~ ("reduceTime" -> reduceTime.toString)
-      ("report" -> timeData)
+      val timeData = timings map { case (name, value) => JField(name, JString(value.toString)) }
+      JField("performance", timeData.toList)
     }
   }
 
@@ -288,30 +295,30 @@ object SparkBenchmarkHPC {
   ) {
 
     def toXML(): xml.Elem = {
-      <config>
+      <args>
         <property key="src" value={ src.getOrElse("") }/>
         <property key="dst" value={ src.getOrElse("") }/>
         <property key="cores" value={ cores.toString }/>
         <property key="generate" value={ generate.toString }/>
         <property key="lazy" value={ lazyEval.toString }/>
         <property key="blocks" value={ blocks.toString }/>
-        <property key="blockSize" value={ blockSize.toString } unit="MB"/>
+        <property key="block_size" value={ blockSize.toString } unit="MB"/>
         <property key="nparts" value={ nparts.toString }/>
         <property key="size" value={ size.toString }/>
         <property key="nodes" value={ nodes.toString }/>
         <property key="json" value={ jsonFilename.getOrElse("") }/>
         <property key="xml" value={ xmlFilename.getOrElse("") }/>
-      </config>
+      </args>
     }
 
     def toJSON(): org.json4s.JsonAST.JObject = {
       val properties = ("src" -> src.getOrElse("")) ~ ("dst" -> dst.getOrElse("")) ~ ("cores" -> cores.toString) ~
         ("generate" -> generate.toString) ~ ("lazy" -> lazyEval.toString) ~
-        ("blocks" -> blocks.toString) ~ ("blockSize" -> blockSize.toString) ~
-        ("blockSizeUnit" -> "MB") ~
+        ("blocks" -> blocks.toString) ~ ("block_size" -> blockSize.toString) ~
+        ("block_size_unit" -> "MB") ~
         ("nparts" -> nparts.toString) ~ ("size" -> size.toString) ~ ("nodes" -> nodes.toString) ~
-        ("jsonFilename" -> jsonFilename.getOrElse("")) ~ ("xmlFilename" -> xmlFilename.getOrElse(""))
-      ("config" -> properties)
+        ("json" -> jsonFilename.getOrElse("")) ~ ("xml" -> xmlFilename.getOrElse(""))
+      ("args" -> properties)
     }
 
   }
