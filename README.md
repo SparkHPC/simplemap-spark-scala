@@ -198,17 +198,23 @@ You can see how long various phases of the computation take (per RDD) by running
 
 Run kernel benchmark with block size of 10 * 1024 * 1024 (3d float vectors):
 
+```
 sbt "run-main dataflows.spark.KernelBenchmark -k 10"
+```
 
 Override the multiplier of 1024\*1024 by using -m or --multiplier:
 
+```
 sbt "run-main dataflows.spark.KernelBenchmark -k 10 -m 16384"
+```
 
 Sometimes it is more convenient to specify -m as the result of a calculation (e.g. some power of two KB or MB)
 
 This is what I do using a Python one-liner:
 
+```
 MULTIPLIER=$(python -c "print(2 \*\* 20)") sbt "run-main dataflows.spark.KernelBenchmark -k 10 -m $MULTIPLIER"
+```
 
 
 
