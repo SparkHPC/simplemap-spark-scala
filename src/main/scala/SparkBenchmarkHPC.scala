@@ -134,6 +134,9 @@ object SparkBenchmarkHPC {
       opt[Int]('b', "blocks") action { (x, c) =>
         c.copy(blocks = x)
       } text ("b/blocks is a int property")
+      opt[Int]('m', "multiplier") action { (x, c) =>
+        c.copy(multiplier = x)
+      } text (s"m/multiplier is an int property (default = $MEGA_MULTIPLIER)")
       opt[Int]('k', "block_size") action { (x, c) =>
         c.copy(blockSize = x)
       } text (s"s/blockSize is an int property (number of 3D float vectors x $MEGA_MULTIPLIER)")
@@ -192,17 +195,17 @@ object SparkBenchmarkHPC {
   def rddFromGenerate(sc: SparkContext, config: Config): RDD[BigMatrixXYZ] = {
     val rdd = sc.parallelize(0 to config.blocks, config.nodes * config.cores * config.nparts)
     //val gen_block_count = (config.blockSize * 1E6 / 24).toInt // 24 bytes per vector
-    rdd.map(item => generate(item, config.blockSize))
+    rdd.map(item => generate(item, config.blockSize, config.multiplier))
   }
 
   // This is the RDD lambda
-  def generate(id: Int, blockSize: Int): BigMatrixXYZ = {
+  def generate(id: Int, blockSize: Int, blockSizeMultiplier: Int): BigMatrixXYZ = {
     // Owing to Java array size limitation, we'll multiply array size by using an outer Array
     // to hold each block (as an inner DenseMatrix)
     val (deltat, _, array) = performance {
-      Array.fill(blockSize)(generateBlock(id, MEGA_MULTIPLIER))
+      Array.fill(blockSize)(generateBlock(id, blockSizeMultiplier))
     }
-    val blockCount = blockSize * MEGA_MULTIPLIER
+    val blockCount = blockSize * blockSizeMultiplier
     println(s"Array of $blockCount float vectors, time = $deltat")
     array
   }
@@ -288,6 +291,7 @@ object SparkBenchmarkHPC {
       lazyEval: Boolean = false,
       blocks: Int = 1,
       blockSize: Int = 1, // 1 MB
+      multiplier: Int = MEGA_MULTIPLIER,
       nparts: Int = 1,
       size: Int = 1,
       nodes: Int = 1,
@@ -304,6 +308,7 @@ object SparkBenchmarkHPC {
         <property key="lazy" value={ lazyEval.toString }/>
         <property key="blocks" value={ blocks.toString }/>
         <property key="block_size" value={ blockSize.toString } unit="MB"/>
+        <property key="multiplier" value={ multiplier.toString }/>
         <property key="nparts" value={ nparts.toString }/>
         <property key="size" value={ size.toString }/>
         <property key="nodes" value={ nodes.toString }/>
@@ -315,7 +320,7 @@ object SparkBenchmarkHPC {
     def toJSON(): org.json4s.JsonAST.JObject = {
       val properties = ("src" -> src.getOrElse("")) ~ ("dst" -> dst.getOrElse("")) ~ ("cores" -> cores.toString) ~
         ("generate" -> generate.toString) ~ ("lazy" -> lazyEval.toString) ~
-        ("blocks" -> blocks.toString) ~ ("block_size" -> blockSize.toString) ~
+        ("blocks" -> blocks.toString) ~ ("block_size" -> blockSize.toString) ~ ("multiplier" -> multiplier.toString) ~
         ("block_size_unit" -> "MB") ~
         ("nparts" -> nparts.toString) ~ ("size" -> size.toString) ~ ("nodes" -> nodes.toString) ~
         ("json" -> jsonFilename.getOrElse("")) ~ ("xml" -> xmlFilename.getOrElse(""))

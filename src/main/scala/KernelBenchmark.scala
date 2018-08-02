@@ -19,7 +19,7 @@ object KernelBenchmark {
     val config = parseCommandLine(args).getOrElse(Config())
 
     val (generateTime, _, array) = performance {
-      generate(0, config.blockSize)
+      generate(0, config.blockSize, config.multiplier)
     }
 
     val (shiftTime, _, shifted) = performance {
