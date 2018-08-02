@@ -190,6 +190,25 @@ id,experiment_id,generate,nodes,cores,nparts,blocks,block_size,map_time,shift_ti
 33,simplemap-spark-scala,1,16,12,192,1000,1000,273080253.0,225905341.0,883982,"",""
 ```
 
+Kernel Benchmark Sans Spark
+--------------------------------
 
-We can then use this CSV in our favorite spreadsheet program or gnuplot. I'm not done running all
-of my experiments yet, but this is where I'm going next!
+Sometimes it is nice to test the _kernel_ computation being done in a Spark program independent of its RDD evaluation (owing to lazy behavior, etc.)
+You can see how long various phases of the computation take (per RDD) by running the `dataflows.spark.KernelBenchmark` as follows:
+
+Run kernel benchmark with block size of 10 * 1024 * 1024 (3d float vectors):
+
+sbt "run-main dataflows.spark.KernelBenchmark -k 10"
+
+Override the multiplier of 1024\*1024 by using -m or --multiplier:
+
+sbt "run-main dataflows.spark.KernelBenchmark -k 10 -m 16384"
+
+Sometimes it is more convenient to specify -m as the result of a calculation (e.g. some power of two KB or MB)
+
+This is what I do using a Python one-liner:
+
+MULTIPLIER=$(python -c "print(2 \*\* 20)") sbt "run-main dataflows.spark.KernelBenchmark -k 10 -m $MULTIPLIER"
+
+
+
