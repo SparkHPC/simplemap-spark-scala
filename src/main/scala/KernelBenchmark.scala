@@ -27,13 +27,24 @@ object KernelBenchmark {
       addVectorDisplacement(array, shift)
     }
 
-    val (avgTime, _, c) = performance {
-      averageOfVectors(shifted)
+    val (avgTimeImmutable, _, _) = performance {
+      averageOfVectorsUFunc(shifted)
+    }
+
+    val (avgTimeMutable1, _, _) = performance {
+      averageOfVectorsUFuncWhile(shifted)
+    }
+
+    val (avgTimeMutable2, _, _) = performance {
+      averageOfVectorsNoUFuncWhile(shifted)
     }
 
     printf("rows: %d, cols: %d\n", array.length * array(0).rows, array(0).cols)
     printf("generation: %f\n", generateTime.t / 1e9)
     printf("shift: %f\n", shiftTime.t / 1e9)
-    printf("average: %f\n", avgTime.t / 1e9)
+    printf("average pure Scala: %f\n", avgTimeImmutable.t / 1e9)
+    printf("average semi-pure with mutable (non-map) loop: %f\n", avgTimeMutable1.t / 1e9)
+    printf("average non-pure with mutable (non-map) loop: %f\n", avgTimeMutable2.t / 1e9)
+
   }
 }

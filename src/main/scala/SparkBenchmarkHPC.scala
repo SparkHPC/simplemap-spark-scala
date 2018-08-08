@@ -62,7 +62,7 @@ object SparkBenchmarkHPC {
     }
 
     val (avgTime, _, c) = performance {
-      val c = doAverage(b)
+      val c = doAverage(b, config)
       if (!config.lazyEval)
         c.persist()
       c
@@ -155,6 +155,15 @@ object SparkBenchmarkHPC {
       opt[String]('x', "xml") action { (x, c) =>
         c.copy(xmlFilename = Some(x))
       } text (s"xml <filename> is where to write XML reports")
+      opt[Unit]("functional") action { (_, c) =>
+        c.copy(functional = true)
+      } text ("functional is a boolean property (select 100% pure functional average using map and UFunc)")
+      opt[Unit]("hybrid") action { (_, c) =>
+        c.copy(hybrid = true)
+      } text ("hybrid is a boolean property (use imperative outer loop and Breeze UFunc")
+      opt[Unit]("imperative") action { (_, c) =>
+        c.copy(imperative = true)
+      } text ("imperative is a boolean property (use imperative code to do average without Breeze UFuncs")
       help("help") text ("prints this usage text")
     }
     parser.parse(args, Config())
@@ -221,11 +230,19 @@ object SparkBenchmarkHPC {
     a.map(x => addVectorDisplacement(x, shift))
   }
 
-  def doAverage(a: RDD[BigMatrixXYZ]): RDD[DenseVector[Double]] = {
-    a.map(x => averageOfVectors(x))
+  def doAverage(a: RDD[BigMatrixXYZ], config: Config): RDD[DenseVector[Double]] = {
+    if (config.functional)
+      a.map(x => averageOfVectorsUFunc(x))
+    else if (config.hybrid)
+      a.map(x => averageOfVectorsUFuncWhile(x))
+    else if (config.imperative)
+      a.map(x => averageOfVectorsNoUFuncWhile(x))
+    else // default to slowest/method
+      a.map(x => averageOfVectorsNoUFuncWhile(x))
+
   }
 
-  def averageOfVectors(data: BigMatrixXYZ): DenseVector[Double] = {
+  def averageOfVectorsUFunc(data: BigMatrixXYZ): DenseVector[Double] = {
     // computes sum of each column (x, y, and z)
     // dividing by a dense vector gives avg(x), avg(y), avg(z)
     // we'll then reduce this to get the global average across partitions
@@ -233,6 +250,8 @@ object SparkBenchmarkHPC {
     val (deltat, _, avg) = performance {
       val partialAverageIter = data map { matrix =>
         // Breeze 0.12
+        //println(s"averageOfVectorsUFunc() inner loop matrix: rows = ${matrix.rows} cols = ${matrix.cols}")
+
         sum(matrix(::, *)).t / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
 
         // Breeze 0.11.2 (same as Spark Breeze version)
@@ -240,9 +259,72 @@ object SparkBenchmarkHPC {
       }
       partialAverageIter.reduce(_ + _)
     }
-    println(s"averageOfVectors() time = $deltat")
-    avg
+    val finalAvg = avg / DenseVector.fill(data(0).cols, data.length.toDouble)
+    println(s"averageOfVectorsUFunc() time = $deltat  data.length=${data.length}  inner matrix: rows = ${data(0).rows} cols = ${data(0).cols}")
+    finalAvg
+  }
 
+  def averageOfVectorsUFuncWhile(data: BigMatrixXYZ): DenseVector[Double] = {
+    // computes sum of each column (x, y, and z)
+    // dividing by a dense vector gives avg(x), avg(y), avg(z)
+    // we'll then reduce this to get the global average across partitions
+
+    val (deltat, _, vectorSum) = performance {
+      var i = 0;
+      val vectorSum = DenseVector.fill(data(0).cols)(0.0)
+
+      // This version is using an explicit while loop to ensure that no threads are used
+      // over map()
+
+      while (i < data.length) {
+        val matrix = data(i)
+        //println(s"averageOfVectorsUFuncWhile() inner loop matrix: rows = ${matrix.rows} cols = ${matrix.cols}")
+        val innerAvg = sum(matrix(::, *)).t / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
+        vectorSum += innerAvg
+        i += 1
+      }
+      vectorSum
+    }
+
+    val finalAvg = vectorSum / DenseVector.fill(data(0).cols, data.length.toDouble)
+    println(s"averageOfVectorsUFuncWhile() time = $deltat  data.length=${data.length}  inner matrix: rows = ${data(0).rows} cols = ${data(0).cols}")
+    finalAvg
+  }
+
+  def averageOfVectorsNoUFuncWhile(data: BigMatrixXYZ): DenseVector[Double] = {
+    // computes sum of each column (x, y, and z)
+    // dividing by a dense vector gives avg(x), avg(y), avg(z)
+    // we'll then reduce this to get the global average across partitions
+
+    val (deltat, _, vectorSum) = performance {
+      var i = 0;
+      val vectorSum = DenseVector.fill(data(0).cols)(0.0)
+
+      // This version is using an explicit while loop to ensure that no threads are used
+      // over map()
+
+      while (i < data.length) {
+        val matrix = data(i)
+        //println(s"averageOfVectorsNoUFuncWhile() inner loop matrix: rows = ${matrix.rows} cols = ${matrix.cols}")
+        vectorSum += doMatrixAverage(matrix)
+        i += 1
+      }
+      vectorSum
+    }
+    val finalAvg = vectorSum / DenseVector.fill(data(0).cols, data.length.toDouble)
+    println(s"averageOfVectorsUFuncWhile() time = $deltat  data.length=${data.length}  inner matrix: rows = ${data(0).rows} cols = ${data(0).cols}")
+    finalAvg
+  }
+
+  def doMatrixAverage(matrix: DenseMatrix[Double]): DenseVector[Double] = {
+    var i = 0;
+    var vectorSum = DenseVector.fill(matrix.cols)(0.0).t // .t is so each iter is not unfairly penalized to do transform on sum
+    val vectorN = DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
+    while (i < matrix.rows) {
+      vectorSum += matrix(i, ::) // This slices a row of the matrix, resulting in a DenseVector[Double] of size 3
+      i += 1
+    }
+    vectorSum.t / vectorN
   }
 
   def addVectorDisplacement(data: BigMatrixXYZ, shift: DenseVector[Double]): BigMatrixXYZ = {
@@ -296,7 +378,10 @@ object SparkBenchmarkHPC {
       size: Int = 1,
       nodes: Int = 1,
       jsonFilename: Option[String] = None,
-      xmlFilename: Option[String] = None
+      xmlFilename: Option[String] = None,
+      functional: Boolean = false,
+      hybrid: Boolean = false,
+      imperative: Boolean = false
   ) {
 
     def toXML(): xml.Elem = {
@@ -314,6 +399,9 @@ object SparkBenchmarkHPC {
         <property key="nodes" value={ nodes.toString }/>
         <property key="json" value={ jsonFilename.getOrElse("") }/>
         <property key="xml" value={ xmlFilename.getOrElse("") }/>
+        <property key="functional" value={ functional.toString }/>
+        <property key="hybrid" value={ hybrid.toString }/>
+        <property key="imperative" value={ imperative.toString }/>
       </args>
     }
 
@@ -323,7 +411,9 @@ object SparkBenchmarkHPC {
         ("blocks" -> blocks.toString) ~ ("block_size" -> blockSize.toString) ~ ("multiplier" -> multiplier.toString) ~
         ("block_size_unit" -> "MB") ~
         ("nparts" -> nparts.toString) ~ ("size" -> size.toString) ~ ("nodes" -> nodes.toString) ~
-        ("json" -> jsonFilename.getOrElse("")) ~ ("xml" -> xmlFilename.getOrElse(""))
+        ("json" -> jsonFilename.getOrElse("")) ~ ("xml" -> xmlFilename.getOrElse("")) ~
+        ("functional" -> functional.toString) ~ ("hybrid" -> hybrid.toString) ~ ("imperative" -> imperative.toString)
+
       ("args" -> properties)
     }
 
