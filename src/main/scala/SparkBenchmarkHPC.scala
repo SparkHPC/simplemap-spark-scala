@@ -239,7 +239,6 @@ object SparkBenchmarkHPC {
       a.map(x => averageOfVectorsNoUFuncWhile(x))
     else // default to slowest/method
       a.map(x => averageOfVectorsNoUFuncWhile(x))
-
   }
 
   def averageOfVectorsUFunc(data: BigMatrixXYZ): DenseVector[Double] = {
@@ -252,14 +251,14 @@ object SparkBenchmarkHPC {
         // Breeze 0.12
         //println(s"averageOfVectorsUFunc() inner loop matrix: rows = ${matrix.rows} cols = ${matrix.cols}")
 
-        sum(matrix(::, *)).t / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
+        sum(matrix(::, *)).t map { element => element / matrix.rows.toDouble }
 
         // Breeze 0.11.2 (same as Spark Breeze version)
         //sum(matrix(::, *)).toDenseVector / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
       }
       partialAverageIter.reduce(_ + _)
     }
-    val finalAvg = avg / DenseVector.fill(data(0).cols, data.length.toDouble)
+    val finalAvg = avg map { element => element / data.length.toDouble }
     println(s"averageOfVectorsUFunc() time = $deltat  data.length=${data.length}  inner matrix: rows = ${data(0).rows} cols = ${data(0).cols}")
     finalAvg
   }
@@ -279,14 +278,14 @@ object SparkBenchmarkHPC {
       while (i < data.length) {
         val matrix = data(i)
         //println(s"averageOfVectorsUFuncWhile() inner loop matrix: rows = ${matrix.rows} cols = ${matrix.cols}")
-        val innerAvg = sum(matrix(::, *)).t / DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
+        val innerAvg = sum(matrix(::, *)).t map { element => element / matrix.rows.toDouble }
         vectorSum += innerAvg
         i += 1
       }
       vectorSum
     }
 
-    val finalAvg = vectorSum / DenseVector.fill(data(0).cols, data.length.toDouble)
+    val finalAvg = vectorSum map { element => element / data.length.toDouble }
     println(s"averageOfVectorsUFuncWhile() time = $deltat  data.length=${data.length}  inner matrix: rows = ${data(0).rows} cols = ${data(0).cols}")
     finalAvg
   }
@@ -311,7 +310,7 @@ object SparkBenchmarkHPC {
       }
       vectorSum
     }
-    val finalAvg = vectorSum / DenseVector.fill(data(0).cols, data.length.toDouble)
+    val finalAvg = vectorSum map { element => element / data.length.toDouble }
     println(s"averageOfVectorsUFuncWhile() time = $deltat  data.length=${data.length}  inner matrix: rows = ${data(0).rows} cols = ${data(0).cols}")
     finalAvg
   }
@@ -319,13 +318,12 @@ object SparkBenchmarkHPC {
   def doMatrixAverage(matrix: DenseMatrix[Double]): DenseVector[Double] = {
     var i = 0;
     var vectorSum = DenseVector.fill(matrix.cols)(0.0) // .t is so each iter is not unfairly penalized to do transform on sum
-    val vectorN = DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
     while (i < matrix.rows) {
       //vectorSum += matrix(i, ::) // This slices a row of the matrix
       vectorSum += DenseVector(matrix(i, 0), matrix(i, 1), matrix(i, 2))
       i += 1
     }
-    vectorSum / vectorN
+    vectorSum map { element => element / matrix.rows.toDouble }
   }
 
   def addVectorDisplacement(data: BigMatrixXYZ, shift: DenseVector[Double]): BigMatrixXYZ = {
