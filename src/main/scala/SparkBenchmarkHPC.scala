@@ -242,8 +242,8 @@ object SparkBenchmarkHPC {
       a.map(x => averageOfVectorsUFuncWhile(x))
     else if (config.imperative)
       a.map(x => averageOfVectorsNoUFuncWhile(x))
-    else // default to slowest/method
-      a.map(x => averageOfVectorsNoUFuncWhile(x))
+    else // default to functional
+      a.map(x => averageOfVectorsUFunc(x))
   }
 
   def averageOfVectorsUFunc(data: BigMatrixXYZ): DenseVector[Double] = {
