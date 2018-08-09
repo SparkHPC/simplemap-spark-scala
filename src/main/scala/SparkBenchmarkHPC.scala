@@ -45,27 +45,32 @@ object SparkBenchmarkHPC {
         sc.stop
         rddNOP(sc, config)
       }
-      val count = rdd.count() // force RDD eval
-      println(s"RDD count $count")
-      if (!config.lazyEval)
+      if (!config.lazyEval) {
+        val count = rdd.count() // force RDD eval
+        println(s"RDD count / generate = $count")
         rdd.persist()
+      }
       rdd
     }
 
     val (shiftTime, _, b) = performance {
       val shiftResult = doShift(a)
-      val count = shiftResult.count() // force RDD eval
-      println(s"RDD count after shift $count")
-      if (!config.lazyEval)
+      if (!config.lazyEval) {
+        val count = shiftResult.count() // force RDD eval
+        println(s"RDD count / shift = $count")
         shiftResult.persist()
+      }
       shiftResult
     }
 
     val (avgTime, _, c) = performance {
-      val c = doAverage(b, config)
-      if (!config.lazyEval)
-        c.persist()
-      c
+      val averageResult = doAverage(b, config)
+      if (!config.lazyEval) {
+        val count = averageResult.count() // force RDD eval
+        println(s"RDD count / average = $count")
+        averageResult.persist()
+      }
+      averageResult
     }
 
     val (reduceTime, _, avgs) = performance {
