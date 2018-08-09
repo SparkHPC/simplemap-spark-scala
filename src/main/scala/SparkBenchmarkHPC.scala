@@ -318,13 +318,14 @@ object SparkBenchmarkHPC {
 
   def doMatrixAverage(matrix: DenseMatrix[Double]): DenseVector[Double] = {
     var i = 0;
-    var vectorSum = DenseVector.fill(matrix.cols)(0.0).t // .t is so each iter is not unfairly penalized to do transform on sum
+    var vectorSum = DenseVector.fill(matrix.cols)(0.0) // .t is so each iter is not unfairly penalized to do transform on sum
     val vectorN = DenseVector.fill(matrix.cols)(matrix.rows.toDouble)
     while (i < matrix.rows) {
-      vectorSum += matrix(i, ::) // This slices a row of the matrix, resulting in a DenseVector[Double] of size 3
+      //vectorSum += matrix(i, ::) // This slices a row of the matrix
+      vectorSum += DenseVector(matrix(i, 0), matrix(i, 1), matrix(i, 2))
       i += 1
     }
-    vectorSum.t / vectorN
+    vectorSum / vectorN
   }
 
   def addVectorDisplacement(data: BigMatrixXYZ, shift: DenseVector[Double]): BigMatrixXYZ = {
