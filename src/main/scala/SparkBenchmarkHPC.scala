@@ -46,9 +46,9 @@ object SparkBenchmarkHPC {
         rddNOP(sc, config)
       }
       if (!config.lazyEval) {
+        rdd.persist()
         val count = rdd.count() // force RDD eval
         println(s"RDD count / generate = $count")
-        rdd.persist()
       }
       rdd
     }
@@ -56,9 +56,9 @@ object SparkBenchmarkHPC {
     val (shiftTime, _, b) = performance {
       val shiftResult = doShift(a)
       if (!config.lazyEval) {
+        shiftResult.persist()
         val count = shiftResult.count() // force RDD eval
         println(s"RDD count / shift = $count")
-        shiftResult.persist()
       }
       shiftResult
     }
@@ -66,9 +66,9 @@ object SparkBenchmarkHPC {
     val (avgTime, _, c) = performance {
       val averageResult = doAverage(b, config)
       if (!config.lazyEval) {
+        averageResult.persist()
         val count = averageResult.count() // force RDD eval
         println(s"RDD count / average = $count")
-        averageResult.persist()
       }
       averageResult
     }
@@ -220,7 +220,7 @@ object SparkBenchmarkHPC {
       Array.fill(blockSize)(generateBlock(id, blockSizeMultiplier))
     }
     val blockCount = blockSize * blockSizeMultiplier
-    println(s"Array of $blockCount float vectors, time = $deltat")
+    println(s"Array (block id=$id) of $blockCount float vectors, time = $deltat")
     array
   }
 
