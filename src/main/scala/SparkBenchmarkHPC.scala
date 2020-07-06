@@ -207,7 +207,7 @@ object SparkBenchmarkHPC {
   }
 
   def rddFromGenerate(sc: SparkContext, config: Config): RDD[BigMatrixXYZ] = {
-    val rdd = sc.parallelize(0 to config.blocks, config.nodes * config.cores * config.nparts)
+    val rdd = sc.parallelize(1 to config.blocks, config.nodes * config.cores * config.nparts)
     //val gen_block_count = (config.blockSize * 1E6 / 24).toInt // 24 bytes per vector
     rdd.map(item => generate(item, config.blockSize, config.multiplier))
   }
